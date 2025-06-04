@@ -2,6 +2,7 @@ import configparser
 import pandas as pd
 from monkdb import client
 import os
+import time
 
 # Load configuration
 config = configparser.ConfigParser()
@@ -15,7 +16,7 @@ DB_SCHEMA = config['database']['DB_SCHEMA']
 RASTER_TABLE = config['database']['RASTER_GEO_SHAPE_TABLE']
 
 # Output file path
-output_path = os.path.join(os.getcwd(), "query_results.txt")
+output_path = os.path.join(os.getcwd(), "query_results_with_layers.txt")
 
 # Establish MonkDB connection
 conn = client.connect(
@@ -67,12 +68,49 @@ queries = {
     "Total Area Coverage (km²)": f"""
         SELECT SUM(area_km) AS total_area_covered_km2
         FROM {DB_SCHEMA}.{RASTER_TABLE};
+    """,
+
+    # 🔍 New Advanced Queries
+    "Tiles with multiple layer versions (duplicate tile_id)": f"""
+        SELECT tile_id, COUNT(*) AS layer_versions
+        FROM {DB_SCHEMA}.{RASTER_TABLE}
+        GROUP BY tile_id
+        HAVING COUNT(*) > 1
+        ORDER BY layer_versions DESC;
+    """,
+
+    "Compare area_km across different layers for same tile_id": f"""
+        SELECT tile_id, layer, area_km
+        FROM {DB_SCHEMA}.{RASTER_TABLE}
+        WHERE tile_id IN (
+            SELECT tile_id
+            FROM {DB_SCHEMA}.{RASTER_TABLE}
+            GROUP BY tile_id
+            HAVING COUNT(*) > 1
+        )
+        ORDER BY tile_id, layer;
+    """,
+
+    "Tiles per layer distribution": f"""
+        SELECT layer, COUNT(*) AS tile_count
+        FROM {DB_SCHEMA}.{RASTER_TABLE}
+        GROUP BY layer
+        ORDER BY tile_count DESC;
+    """,
+
+    "Average area_km per layer": f"""
+        SELECT layer, ROUND(AVG(area_km), 2) AS avg_area_km
+        FROM {DB_SCHEMA}.{RASTER_TABLE}
+        GROUP BY layer
+        ORDER BY avg_area_km DESC;
     """
 }
 
+# Execute and log all queries with timing
 with open(output_path, "w", encoding="utf-8") as output_file:
     for name, sql in queries.items():
         output_file.write(f"\n\n### {name}\n")
+        start = time.perf_counter()
         try:
             cursor.execute(sql)
             results = cursor.fetchall()
@@ -80,6 +118,9 @@ with open(output_path, "w", encoding="utf-8") as output_file:
             output_file.write(df.to_string(index=False))
         except Exception as e:
             output_file.write(f"Query failed: {e}\n")
+        end = time.perf_counter()
+        duration = round(end - start, 3)
+        output_file.write(f"\n⏱️ Query Time: {duration} sec\n")
 
 cursor.close()
 conn.close()
