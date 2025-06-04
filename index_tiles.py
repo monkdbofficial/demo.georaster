@@ -41,7 +41,7 @@ def extract_tile_metadata(fname):
 
 
 def main():
-    print(f"🔍 Indexing raster tiles from: {tile_dir}")
+    print(f"Indexing raster tiles from: {tile_dir}")
 
     tasks = [extract_tile_metadata(f) for f in os.listdir(tile_dir)]
     results = compute(*tasks)

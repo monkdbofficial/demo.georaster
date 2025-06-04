@@ -84,4 +84,4 @@ with open(output_path, "w", encoding="utf-8") as output_file:
 cursor.close()
 conn.close()
 
-print(f"\n✅ Finished all queries. Results saved to {output_path}")
+print(f"\nFinished all queries. Results saved to {output_path}")

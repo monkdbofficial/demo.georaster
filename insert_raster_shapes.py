@@ -47,14 +47,14 @@ try:
         username=DB_USER
     )
     cursor = conn.cursor()
-    print("✅ Connected to MonkDB.")
+    print("Connected to MonkDB.")
 except Exception as e:
-    print(f"❌ Database connection error: {e}")
+    print(f"Database connection error: {e}")
     exit(1)
 
 # Drop and create table
 cursor.execute(f"DROP TABLE IF EXISTS {DB_SCHEMA}.{RASTER_TABLE}")
-print(f"🗑️ Dropped table {DB_SCHEMA}.{RASTER_TABLE} (if existed).")
+print(f"Dropped table {DB_SCHEMA}.{RASTER_TABLE} (if existed).")
 
 cursor.execute(f"""
 CREATE TABLE IF NOT EXISTS {DB_SCHEMA}.{RASTER_TABLE} (
@@ -66,7 +66,7 @@ CREATE TABLE IF NOT EXISTS {DB_SCHEMA}.{RASTER_TABLE} (
     area_km DOUBLE
 ) WITH (number_of_replicas = 0);
 """)
-print(f"🛠️ Created table {DB_SCHEMA}.{RASTER_TABLE}.")
+print(f"Created table {DB_SCHEMA}.{RASTER_TABLE}.")
 
 # Insert records
 inserted_count = 0
@@ -85,7 +85,7 @@ with open(TILE_INDEX_CSV, "r", encoding="utf-8") as f:
             geom = wkt.loads(polygon_wkt)
 
             if not geom.is_valid:
-                print(f"⚠️ Invalid polygon for tile {tile_id}, skipping.")
+                print(f"Invalid polygon for tile {tile_id}, skipping.")
                 skipped_count += 1
                 continue
 
@@ -111,21 +111,21 @@ with open(TILE_INDEX_CSV, "r", encoding="utf-8") as f:
                 area_km
             ))
 
-            print(f"✅ Inserted: {tile_id} (area_km={area_km})")
+            print(f"Inserted: {tile_id} (area_km={area_km})")
             inserted_count += 1
 
         except Exception as e:
-            print(f"❌ Failed to insert {tile_id}: {e}")
+            print(f"Failed to insert {tile_id}: {e}")
             skipped_count += 1
 
 # Final report
 cursor.execute(f"SELECT COUNT(*) FROM {DB_SCHEMA}.{RASTER_TABLE}")
 row_count = cursor.fetchone()[0]
 
-print("\n📊 Summary:")
-print(f"🔹 Total rows in table: {row_count}")
-print(f"✅ Successful inserts: {inserted_count}")
-print(f"⚠️ Skipped or failed inserts: {skipped_count}")
+print("\nSummary:")
+print(f"Total rows in table: {row_count}")
+print(f"Successful inserts: {inserted_count}")
+print(f"Skipped or failed inserts: {skipped_count}")
 
 cursor.close()
 conn.close()
