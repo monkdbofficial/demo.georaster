@@ -10,10 +10,15 @@ import pandas as pd
 config = configparser.ConfigParser()
 config.read("config.ini")
 
-tile_dir = config["paths"]["tile_dir"]
-output_file = config["paths"]["output_csv"]
+tile_dir = config["paths"]["tile_dir"].rstrip("/")
+output_filename = config["paths"]["output_csv"]
 layer_name = config["metadata"]["layer_name"]
 export_format = config["metadata"].get("export_format", "csv").lower()
+
+# Set output path: tile_dir/tile_index/output_filename
+output_dir = os.path.join(tile_dir, "tile_index")
+os.makedirs(output_dir, exist_ok=True)
+output_file_path = os.path.join(output_dir, output_filename)
 
 
 @delayed
@@ -48,11 +53,11 @@ def main():
     df = dd.from_pandas(pd.DataFrame(records), npartitions=1)
 
     if export_format == "csv":
-        df.to_csv(output_file, index=False, single_file=True)
-        print(f"Tile index written to: {output_file}")
+        df.to_csv(output_file_path, index=False, single_file=True)
+        print(f"Tile index written to: {output_file_path}")
     elif export_format == "parquet":
-        df.to_parquet(output_file, index=False)
-        print(f"Tile index written to: {output_file} (Parquet)")
+        df.to_parquet(output_file_path, index=False)
+        print(f"Tile index written to: {output_file_path} (Parquet)")
     else:
         print(f"Unsupported export_format: {export_format}")
 
