@@ -1,6 +1,7 @@
 import configparser
 import pandas as pd
 from monkdb import client
+import os
 
 # Load configuration
 config = configparser.ConfigParser()
@@ -12,6 +13,9 @@ DB_USER = config['database']['DB_USER']
 DB_PASSWORD = config['database']['DB_PASSWORD']
 DB_SCHEMA = config['database']['DB_SCHEMA']
 RASTER_TABLE = config['database']['RASTER_GEO_SHAPE_TABLE']
+
+# Output file path
+output_path = os.path.join(os.getcwd(), "query_results.txt")
 
 # Establish MonkDB connection
 conn = client.connect(
@@ -48,11 +52,11 @@ queries = {
         WHERE distance(centroid, [85.0, 20.0]) < 1000000;
     """,
     "Count of tiles per geohash region (precision ~3)": f"""
-    SELECT substr(geohash(centroid), 1, 3) AS region, COUNT(*) AS tiles
-    FROM {DB_SCHEMA}.{RASTER_TABLE}
-    GROUP BY region
-    ORDER BY tiles DESC;
-""",
+        SELECT substr(geohash(centroid), 1, 3) AS region, COUNT(*) AS tiles
+        FROM {DB_SCHEMA}.{RASTER_TABLE}
+        GROUP BY region
+        ORDER BY tiles DESC;
+    """,
     "Southern & Eastern Hemisphere Centroids": f"""
         SELECT tile_id, centroid
         FROM {DB_SCHEMA}.{RASTER_TABLE}
@@ -64,17 +68,18 @@ queries = {
     """
 }
 
-# Run and print each query
-for name, sql in queries.items():
-    print(f"\n{name}")
-    try:
-        cursor.execute(sql)
-        results = cursor.fetchall()
-        df = pd.DataFrame(results)
-        print(df.to_string(index=False))
-    except Exception as e:
-        print(f"Query failed: {e}")
+with open(output_path, "w", encoding="utf-8") as output_file:
+    for name, sql in queries.items():
+        output_file.write(f"\n\n### {name}\n")
+        try:
+            cursor.execute(sql)
+            results = cursor.fetchall()
+            df = pd.DataFrame(results)
+            output_file.write(df.to_string(index=False))
+        except Exception as e:
+            output_file.write(f"Query failed: {e}\n")
 
 cursor.close()
 conn.close()
-print("\nFinished all queries.")
+
+print(f"\n✅ Finished all queries. Results saved to {output_path}")
