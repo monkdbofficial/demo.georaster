@@ -3,3 +3,4 @@ dask
 monkdb
 shapely
 rasterio
+pyarrow
