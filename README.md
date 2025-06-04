@@ -32,6 +32,29 @@ We have used Natural Earth's Cross Blended Hypsometric Tints with Relief, Water,
 
 ---
 
+## Config File
+
+You need to create a config ini file at the root with the below structure. Replace `tile_dir` paths according to your system's directory layout. Also replace `DB_HOST` value with the IP address of MonkDB.
+
+```text
+[paths]
+tile_dir = /home/ubuntu/geo/tiled_raster
+output_csv = raster_tile_index.csv
+
+[metadata]
+layer_name = hypso_relief
+export_format = csv
+
+[database]
+DB_HOST = xx.xx.xx.xxx
+DB_PORT = 4200
+DB_USER = testuser
+DB_PASSWORD = testpassword
+DB_SCHEMA = monkdb
+RASTERGEO_POINTS_TABLE = raster_geo_points
+RASTER_GEO_SHAPE_TABLE = raster_geo_shapes
+```
+
 ## 🗂️ GDAL Usage
 
 We used:
