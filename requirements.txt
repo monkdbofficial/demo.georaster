@@ -4,3 +4,4 @@ monkdb
 shapely
 rasterio
 pyarrow
+pyproj
