@@ -47,12 +47,12 @@ queries = {
         FROM {DB_SCHEMA}.{RASTER_TABLE}
         WHERE distance(centroid, [85.0, 20.0]) < 1000000;
     """,
-    "Group by Geohash (precision 3)": f"""
-        SELECT geohash(centroid, 3) AS region, COUNT(*) AS tile_count
-        FROM {DB_SCHEMA}.{RASTER_TABLE}
-        GROUP BY region
-        ORDER BY tile_count DESC;
-    """,
+    "Count of tiles per geohash region (precision ~3)": f"""
+    SELECT substr(geohash(centroid), 1, 3) AS region, COUNT(*) AS tiles
+    FROM {DB_SCHEMA}.{RASTER_TABLE}
+    GROUP BY region
+    ORDER BY tiles DESC;
+""",
     "Southern & Eastern Hemisphere Centroids": f"""
         SELECT tile_id, centroid
         FROM {DB_SCHEMA}.{RASTER_TABLE}
