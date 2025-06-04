@@ -28,17 +28,13 @@ TILE_INDEX_CSV = os.path.join(output_dir, output_filename)
 # Initialize geodetic calculator
 geod = Geod(ellps="WGS84")
 
-
-def safe_wkt(polygon: Polygon) -> str:
-    """Ensure polygon coordinates are within MonkDB limits."""
-    coords = list(polygon.exterior.coords)
-    adjusted = []
-    for lon, lat in coords:
-        lon = max(min(lon, 179.999999), -179.999999)
-        lat = max(min(lat, 89.999999), -89.999999)
-        adjusted.append((lon, lat))
-    return f"POLYGON (({', '.join([f'{x[0]} {x[1]}' for x in adjusted])}))"
-
+# Resolution tiers
+SIMULATED_LAYERS = [
+    ("hypso_relief", "high", 0.0),
+    ("land_cover_simulated", "medium", 0.1),
+    ("surface_water_simulated", "low", 0.5),
+    ("slope_map_simulated", "very_low", 1.0)
+]
 
 # Connect to MonkDB
 try:
@@ -52,7 +48,7 @@ except Exception as e:
     print(f"Database connection error: {e}")
     exit(1)
 
-# Drop and create table
+# Drop and recreate table with resolution
 cursor.execute(f"DROP TABLE IF EXISTS {DB_SCHEMA}.{RASTER_TABLE}")
 print(f"Dropped table {DB_SCHEMA}.{RASTER_TABLE} (if existed).")
 
@@ -62,13 +58,27 @@ CREATE TABLE IF NOT EXISTS {DB_SCHEMA}.{RASTER_TABLE} (
     area GEO_SHAPE,
     path TEXT,
     layer TEXT,
+    resolution TEXT,
     centroid GEO_POINT,
     area_km DOUBLE
 ) WITH (number_of_replicas = 0);
 """)
 print(f"Created table {DB_SCHEMA}.{RASTER_TABLE}.")
 
-# Insert records
+# Utility
+
+
+def safe_wkt(polygon: Polygon) -> str:
+    coords = list(polygon.exterior.coords)
+    adjusted = []
+    for lon, lat in coords:
+        lon = max(min(lon, 179.999999), -179.999999)
+        lat = max(min(lat, 89.999999), -89.999999)
+        adjusted.append((lon, lat))
+    return f"POLYGON (({', '.join([f'{x[0]} {x[1]}' for x in adjusted])}))"
+
+
+# Insert records across layers
 inserted_count = 0
 skipped_count = 0
 
@@ -79,54 +89,64 @@ with open(TILE_INDEX_CSV, "r", encoding="utf-8") as f:
             skipped_count += 1
             continue
 
-        tile_id, polygon_wkt, file_path, layer = row
+        original_tile_id, polygon_wkt, file_path, base_layer = row
 
         try:
             geom = wkt.loads(polygon_wkt)
-
             if not geom.is_valid:
-                print(f"Invalid polygon for tile {tile_id}, skipping.")
+                print(
+                    f"⚠️ Invalid polygon for tile {original_tile_id}, skipping.")
                 skipped_count += 1
                 continue
 
-            adjusted_wkt = safe_wkt(geom)
-            centroid_coords = list(geom.centroid.coords)[0]
-            centroid = [round(centroid_coords[0], 6),
-                        round(centroid_coords[1], 6)]
+            for layer, resolution, tolerance in SIMULATED_LAYERS:
+                # Simplify if needed
+                sim_geom = geom.simplify(tolerance) if tolerance > 0 else geom
+                adjusted_wkt = safe_wkt(sim_geom)
 
-            # Compute geodesic area in km²
-            area_m2, _ = geod.geometry_area_perimeter(geom)
-            area_km = round(abs(area_m2) / 1e6, 3)
+                # Compute centroid
+                centroid_coords = list(sim_geom.centroid.coords)[0]
+                centroid = [round(centroid_coords[0], 6),
+                            round(centroid_coords[1], 6)]
 
-            cursor.execute(f"""
-                INSERT INTO {DB_SCHEMA}.{RASTER_TABLE}
-                (tile_id, area, path, layer, centroid, area_km)
-                VALUES (?, ?, ?, ?, ?, ?)
-            """, (
-                tile_id,
-                adjusted_wkt,
-                file_path,
-                layer,
-                centroid,
-                area_km
-            ))
+                # Geodesic area in km²
+                area_m2, _ = geod.geometry_area_perimeter(sim_geom)
+                area_km = round(abs(area_m2) / 1e6, 3)
 
-            print(f"Inserted: {tile_id} (area_km={area_km})")
-            inserted_count += 1
+                # Unique tile ID per layer
+                tile_id = f"{original_tile_id}__{layer}"
+
+                cursor.execute(f"""
+                    INSERT INTO {DB_SCHEMA}.{RASTER_TABLE}
+                    (tile_id, area, path, layer, resolution, centroid, area_km)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    tile_id,
+                    adjusted_wkt,
+                    file_path,
+                    layer,
+                    resolution,
+                    centroid,
+                    area_km
+                ))
+
+                print(
+                    f"Inserted: {tile_id} [res={resolution}] (area_km={area_km})")
+                inserted_count += 1
 
         except Exception as e:
-            print(f"Failed to insert {tile_id}: {e}")
+            print(f"Failed to insert {original_tile_id}: {e}")
             skipped_count += 1
 
-# Final report
+# Summary
 cursor.execute(f"SELECT COUNT(*) FROM {DB_SCHEMA}.{RASTER_TABLE}")
-row_count = cursor.fetchone()[0]
+total_rows = cursor.fetchone()[0]
 
 print("\nSummary:")
-print(f"Total rows in table: {row_count}")
+print(f"Total rows in table: {total_rows}")
 print(f"Successful inserts: {inserted_count}")
 print(f"Skipped or failed inserts: {skipped_count}")
 
 cursor.close()
 conn.close()
-print("🔌 Disconnected from MonkDB.")
+print("Disconnected from MonkDB.")
