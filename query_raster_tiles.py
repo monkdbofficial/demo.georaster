@@ -38,6 +38,8 @@ queries = {
     "Top 10 largest tiles by area": f"""
         SELECT tile_id, area_km
         FROM {DB_SCHEMA}.{RASTER_TABLE}
+        WHERE area_km IS NOT NULL
+        GROUP BY area_km, tile_id
         ORDER BY area_km DESC
         LIMIT 10;
     """,

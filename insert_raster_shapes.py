@@ -94,7 +94,7 @@ with open(TILE_INDEX_CSV, "r", encoding="utf-8") as f:
             centroid = [round(centroid_coords[0], 6),
                         round(centroid_coords[1], 6)]
 
-            # Compute geodesic area (in km²)
+            # Compute geodesic area in km²
             area_m2, _ = geod.geometry_area_perimeter(geom)
             area_km = round(abs(area_m2) / 1e6, 3)
 
