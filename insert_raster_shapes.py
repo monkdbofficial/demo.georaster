@@ -3,6 +3,7 @@ import configparser
 import os
 from shapely import wkt
 from shapely.geometry import Polygon
+from pyproj import Geod
 from monkdb import client
 
 # Load config
@@ -24,9 +25,12 @@ output_dir = os.path.join(tile_dir, "tile_index")
 os.makedirs(output_dir, exist_ok=True)
 TILE_INDEX_CSV = os.path.join(output_dir, output_filename)
 
+# Initialize geodetic calculator
+geod = Geod(ellps="WGS84")
+
 
 def safe_wkt(polygon: Polygon) -> str:
-    """Ensure polygon coordinates are within MonkDB limits (-180 to <180, -90 to <90)."""
+    """Ensure polygon coordinates are within MonkDB limits."""
     coords = list(polygon.exterior.coords)
     adjusted = []
     for lon, lat in coords:
@@ -43,14 +47,14 @@ try:
         username=DB_USER
     )
     cursor = conn.cursor()
-    print("Connected to MonkDB.")
+    print("✅ Connected to MonkDB.")
 except Exception as e:
-    print(f"Database connection error: {e}")
+    print(f"❌ Database connection error: {e}")
     exit(1)
 
-# Drop and Create table
+# Drop and create table
 cursor.execute(f"DROP TABLE IF EXISTS {DB_SCHEMA}.{RASTER_TABLE}")
-print(f"Dropped table {DB_SCHEMA}.{RASTER_TABLE} (if existed).")
+print(f"🗑️ Dropped table {DB_SCHEMA}.{RASTER_TABLE} (if existed).")
 
 cursor.execute(f"""
 CREATE TABLE IF NOT EXISTS {DB_SCHEMA}.{RASTER_TABLE} (
@@ -62,9 +66,9 @@ CREATE TABLE IF NOT EXISTS {DB_SCHEMA}.{RASTER_TABLE} (
     area_km DOUBLE
 ) WITH (number_of_replicas = 0);
 """)
-print(f"Created table {DB_SCHEMA}.{RASTER_TABLE}.")
+print(f"🛠️ Created table {DB_SCHEMA}.{RASTER_TABLE}.")
 
-# Insert records from CSV
+# Insert records
 inserted_count = 0
 skipped_count = 0
 
@@ -72,6 +76,7 @@ with open(TILE_INDEX_CSV, "r", encoding="utf-8") as f:
     reader = csv.reader(f)
     for row in reader:
         if len(row) != 4:
+            skipped_count += 1
             continue
 
         tile_id, polygon_wkt, file_path, layer = row
@@ -80,17 +85,18 @@ with open(TILE_INDEX_CSV, "r", encoding="utf-8") as f:
             geom = wkt.loads(polygon_wkt)
 
             if not geom.is_valid:
-                print(f"Invalid polygon for tile {tile_id}, skipping.")
+                print(f"⚠️ Invalid polygon for tile {tile_id}, skipping.")
                 skipped_count += 1
                 continue
 
             adjusted_wkt = safe_wkt(geom)
-
             centroid_coords = list(geom.centroid.coords)[0]
             centroid = [round(centroid_coords[0], 6),
                         round(centroid_coords[1], 6)]
 
-            area_km = round(geom.area / 1e6, 3)
+            # Compute geodesic area (in km²)
+            area_m2, _ = geod.geometry_area_perimeter(geom)
+            area_km = round(abs(area_m2) / 1e6, 3)
 
             cursor.execute(f"""
                 INSERT INTO {DB_SCHEMA}.{RASTER_TABLE}
@@ -105,25 +111,22 @@ with open(TILE_INDEX_CSV, "r", encoding="utf-8") as f:
                 area_km
             ))
 
-            print(f"Inserted: {tile_id}")
+            print(f"✅ Inserted: {tile_id} (area_km={area_km})")
             inserted_count += 1
 
         except Exception as e:
-            if "duplicate key" in str(e).lower():
-                print(f"Duplicate tile_id {tile_id}, skipping.")
-            else:
-                print(f"Failed to insert {tile_id}: {e}")
+            print(f"❌ Failed to insert {tile_id}: {e}")
             skipped_count += 1
 
-# Final reporting
+# Final report
 cursor.execute(f"SELECT COUNT(*) FROM {DB_SCHEMA}.{RASTER_TABLE}")
 row_count = cursor.fetchone()[0]
 
-print("\nSummary:")
-print(f"Total rows in table: {row_count}")
-print(f"Successful inserts: {inserted_count}")
-print(f"Skipped or failed inserts: {skipped_count}")
+print("\n📊 Summary:")
+print(f"🔹 Total rows in table: {row_count}")
+print(f"✅ Successful inserts: {inserted_count}")
+print(f"⚠️ Skipped or failed inserts: {skipped_count}")
 
 cursor.close()
 conn.close()
-print("Disconnected from MonkDB.")
+print("🔌 Disconnected from MonkDB.")
