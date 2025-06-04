@@ -25,6 +25,21 @@ output_dir = os.path.join(tile_dir, "tile_index")
 os.makedirs(output_dir, exist_ok=True)
 TILE_INDEX_CSV = os.path.join(output_dir, output_filename)
 
+# Normalize edge latitudes to avoid -90.0/+90.0 issues with monkdb's geo_shape
+
+
+def safe_wkt(polygon):
+    coords = list(polygon.exterior.coords)
+    adjusted = []
+    for lon, lat in coords:
+        if lat <= -90.0:
+            lat = -89.999999
+        elif lat >= 90.0:
+            lat = 89.999999
+        adjusted.append((lon, lat))
+    return f"POLYGON (({', '.join([f'{x[0]} {x[1]}' for x in adjusted])}))"
+
+
 # Connect to MonkDB
 try:
     conn = client.connect(
@@ -32,14 +47,14 @@ try:
         username=DB_USER
     )
     cursor = conn.cursor()
-    print("✅ Connected to MonkDB.")
+    print("Connected to MonkDB.")
 except Exception as e:
-    print(f"❌ Database connection error: {e}")
+    print(f"Database connection error: {e}")
     exit(1)
 
 # Drop existing table
 cursor.execute(f"DROP TABLE IF EXISTS {DB_SCHEMA}.{RASTER_TABLE}")
-print(f"🧹 Dropped table {DB_SCHEMA}.{RASTER_TABLE} (if existed).")
+print(f"🗑️ Dropped table {DB_SCHEMA}.{RASTER_TABLE} if it existed.")
 
 # Create new table
 cursor.execute(f"""
@@ -52,9 +67,12 @@ CREATE TABLE IF NOT EXISTS {DB_SCHEMA}.{RASTER_TABLE} (
     area_km DOUBLE
 ) WITH (number_of_replicas = 0);
 """)
-print(f"🛠️  Created table {DB_SCHEMA}.{RASTER_TABLE}.")
+print(f"Created table {DB_SCHEMA}.{RASTER_TABLE}.")
 
 # Read CSV and insert records
+inserted_count = 0
+skipped_count = 0
+
 with open(TILE_INDEX_CSV, "r", encoding="utf-8") as f:
     reader = csv.reader(f)
     for row in reader:
@@ -68,15 +86,19 @@ with open(TILE_INDEX_CSV, "r", encoding="utf-8") as f:
 
             if not geom.is_valid:
                 reason = explain_validity(geom)
-                print(f"❌ Invalid polygon for tile {tile_id}: {reason}")
+                print(f"Skipping invalid polygon {tile_id}: {reason}")
+                skipped_count += 1
                 continue
+
+            # Adjust WKT to avoid pole issues
+            adjusted_wkt = safe_wkt(geom)
 
             # Get centroid as [lon, lat]
             centroid_coords = list(geom.centroid.coords)[0]
             centroid = [round(centroid_coords[0], 6),
                         round(centroid_coords[1], 6)]
 
-            # Estimate area in square kilometers (approximate for large WGS84 bounds)
+            # Estimate area in square kilometers
             area_km = round(geom.area / 1e6, 3)
 
             cursor.execute(f"""
@@ -85,22 +107,26 @@ with open(TILE_INDEX_CSV, "r", encoding="utf-8") as f:
                 VALUES (?, ?, ?, ?, ?, ?)
             """, (
                 tile_id,
-                polygon_wkt,
+                adjusted_wkt,
                 file_path,
                 layer,
                 centroid,
                 area_km
             ))
 
-            print(f"✅ Inserted: {tile_id}")
+            print(f"Inserted: {tile_id}")
+            inserted_count += 1
 
         except Exception as e:
-            print(f"⚠️  Failed to insert {tile_id}: {e}")
+            print(f"❌ Failed to insert {tile_id}: {e}")
+            skipped_count += 1
 
-# Final check
+# Final stats
 cursor.execute(f"SELECT COUNT(*) FROM {DB_SCHEMA}.{RASTER_TABLE}")
-print(f"\n📊 Total rows inserted: {cursor.fetchone()[0]}")
+print(f"\nTotal rows in table: {cursor.fetchone()[0]}")
+print(f"Successful inserts: {inserted_count}")
+print(f"Skipped or failed inserts: {skipped_count}")
 
 cursor.close()
 conn.close()
-print("🔌 Disconnected from MonkDB.")
+print("Disconnected from MonkDB.")
