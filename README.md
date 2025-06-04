@@ -7,7 +7,7 @@
 
 ## 📦 Dataset Overview
 
-We use **NASA's SRTM Hypso Relief Raster Tiles** representing global elevation data as tiled `.tif` files. Each tile is a geospatial raster that covers a bounded region defined by latitude and longitude. This dataset is widely used in terrain modeling, simulations, and visualizations.
+We have used Natural Earth's Cross Blended Hypsometric Tints with Relief, Water, Drainages, and Ocean Bottom dataset (specifically, the [**HYP_HR_SR_OB_DR.zip**](https://www.naturalearthdata.com/http//www.naturalearthdata.com/download/10m/raster/HYP_HR_SR_OB_DR.zip) archive). This high-resolution global raster (.tif) file provides visually rich, elevation-based shading with additional features such as ocean floor bathymetry, river drainages, and land relief. Sourced from Natural Earth Data, this dataset is suitable for large-scale geospatial visualizations, terrain analysis, and vector-based enrichment, making it ideal for geospatial indexing and geoanalytics with MonkDB.
 
 ### 🔹 Why This Dataset?
 
@@ -36,7 +36,7 @@ We use **NASA's SRTM Hypso Relief Raster Tiles** representing global elevation d
 
 We used:
 ```bash
-gdalinfo -json /path/to/tile.tif
+gdalinfo -json /path/to/HYP_HR_SR_OB_DR.tif
 ```
 to extract:
 - Bounding box
@@ -48,6 +48,21 @@ This metadata is used to compute:
 - **Polygon** for the bounding box (`GEO_SHAPE`)
 - **Centroid** of the tile (`GEO_POINT`)
 - **Area** using `pyproj.Geod` for Earth-accurate results
+
+We then split the tif file into manageable tiles, e.g., 512x512 using gdal's retile utility.
+
+```bash
+gdal_retile.py \
+  -ps 512 512 \
+  -targetDir ./tiled_raster/ \
+  -co TILED=YES -co COMPRESS=DEFLATE \
+  HYP_HR_SR_OB_DR.tif
+```
+
+Each tile was then:
+- Georeferenced (GeoTIFF)
+- Usable independently
+- Mapped cleanly to a bounding box (for ROI querying)
 
 ---
 
