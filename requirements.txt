@@ -5,3 +5,7 @@ shapely
 rasterio
 pyarrow
 pyproj
+gradio
+llama-cpp-python
+python-dotenv
+mcp-monkdb
