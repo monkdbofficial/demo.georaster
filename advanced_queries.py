@@ -1,0 +1,77 @@
+import configparser
+import pandas as pd
+from monkdb import client
+import os
+import time
+
+config = configparser.ConfigParser()
+config.read("config.ini", encoding="utf-8")
+
+DB_HOST = config['database']['DB_HOST']
+DB_PORT = config['database']['DB_PORT']
+DB_USER = config['database']['DB_USER']
+DB_PASSWORD = config['database']['DB_PASSWORD']
+DB_SCHEMA = config['database']['DB_SCHEMA']
+RASTER_TABLE = config['database']['RASTER_GEO_SHAPE_TABLE']
+
+output_path = os.path.join(os.getcwd(), "advanced_query_results.txt")
+
+conn = client.connect(
+    f"http://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}",
+    username=DB_USER
+)
+cursor = conn.cursor()
+
+queries = {
+    "Tiles with multiple layer versions (duplicate tile_id)": f"""
+        SELECT tile_id, COUNT(*) AS layer_versions
+        FROM {DB_SCHEMA}.{RASTER_TABLE}
+        GROUP BY tile_id
+        HAVING COUNT(*) > 1
+        ORDER BY layer_versions DESC;
+    """,
+    "Compare area_km across different layers for same tile_id": f"""
+        WITH duplicates AS (
+            SELECT tile_id
+            FROM {DB_SCHEMA}.{RASTER_TABLE}
+            GROUP BY tile_id
+            HAVING COUNT(*) > 1
+        )
+        SELECT tile_id, layer, area_km
+        FROM {DB_SCHEMA}.{RASTER_TABLE}
+        WHERE tile_id IN (SELECT tile_id FROM duplicates)
+        ORDER BY tile_id, layer;
+    """,
+    "Tiles per layer distribution": f"""
+        SELECT layer, COUNT(*) AS tile_count
+        FROM {DB_SCHEMA}.{RASTER_TABLE}
+        GROUP BY layer
+        ORDER BY tile_count DESC;
+    """,
+    "Average area_km per layer": f"""
+        SELECT layer, ROUND(AVG(area_km), 2) AS avg_area_km
+        FROM {DB_SCHEMA}.{RASTER_TABLE}
+        GROUP BY layer
+        ORDER BY avg_area_km DESC;
+    """
+}
+
+with open(output_path, "w", encoding="utf-8") as output_file:
+    for name, sql in queries.items():
+        output_file.write(f"\n\n### {name}\n")
+        start = time.perf_counter()
+        try:
+            cursor.execute(sql)
+            results = cursor.fetchall()
+            df = pd.DataFrame(results)
+            output_file.write(df.to_string(index=False))
+            print(f"✅ Completed: {name}")
+        except Exception as e:
+            output_file.write(f"Query failed: {e}\n")
+            print(f"❌ Failed: {name} — {e}")
+        end = time.perf_counter()
+        output_file.write(f"\n⏱️ Query Time: {round(end - start, 3)} sec\n")
+
+cursor.close()
+conn.close()
+print(f"\n🎯 All advanced queries completed. Results saved to {output_path}")

@@ -25,17 +25,20 @@ conn = client.connect(
 )
 cursor = conn.cursor()
 
+# Define queries
 queries = {
     "Centroids within bounding box (Lat -10 to 10, Lon 100 to 120)": f"""
         SELECT tile_id, centroid
         FROM {DB_SCHEMA}.{RASTER_TABLE}
         WHERE within(centroid, 'POLYGON ((100 -10, 120 -10, 120 10, 100 10, 100 -10))');
     """,
+
     "Tiles with zero or near-zero area": f"""
         SELECT tile_id, area_km
         FROM {DB_SCHEMA}.{RASTER_TABLE}
         WHERE area_km < 0.01;
     """,
+
     "Top 10 largest tiles by area": f"""
         SELECT tile_id, area_km
         FROM {DB_SCHEMA}.{RASTER_TABLE}
@@ -44,69 +47,39 @@ queries = {
         ORDER BY area_km DESC
         LIMIT 10;
     """,
+
     "Tiles in layer = hypso_relief": f"""
         SELECT tile_id, path
         FROM {DB_SCHEMA}.{RASTER_TABLE}
         WHERE layer = 'hypso_relief';
     """,
+
     "Centroids within 1000km of [85, 20]": f"""
         SELECT tile_id, centroid
         FROM {DB_SCHEMA}.{RASTER_TABLE}
         WHERE distance(centroid, [85.0, 20.0]) < 1000000;
     """,
+
     "Count of tiles per geohash region (precision ~3)": f"""
         SELECT substr(geohash(centroid), 1, 3) AS region, COUNT(*) AS tiles
         FROM {DB_SCHEMA}.{RASTER_TABLE}
         GROUP BY region
         ORDER BY tiles DESC;
     """,
+
     "Southern & Eastern Hemisphere Centroids": f"""
         SELECT tile_id, centroid
         FROM {DB_SCHEMA}.{RASTER_TABLE}
         WHERE latitude(centroid) < 0 AND longitude(centroid) > 0;
     """,
+
     "Total Area Coverage (km²)": f"""
         SELECT SUM(area_km) AS total_area_covered_km2
         FROM {DB_SCHEMA}.{RASTER_TABLE};
-    """,
-
-    # 🔍 New Advanced Queries
-    "Tiles with multiple layer versions (duplicate tile_id)": f"""
-        SELECT tile_id, COUNT(*) AS layer_versions
-        FROM {DB_SCHEMA}.{RASTER_TABLE}
-        GROUP BY tile_id
-        HAVING COUNT(*) > 1
-        ORDER BY layer_versions DESC;
-    """,
-
-    "Compare area_km across different layers for same tile_id": f"""
-        SELECT tile_id, layer, area_km
-        FROM {DB_SCHEMA}.{RASTER_TABLE}
-        WHERE tile_id IN (
-            SELECT tile_id
-            FROM {DB_SCHEMA}.{RASTER_TABLE}
-            GROUP BY tile_id
-            HAVING COUNT(*) > 1
-        )
-        ORDER BY tile_id, layer;
-    """,
-
-    "Tiles per layer distribution": f"""
-        SELECT layer, COUNT(*) AS tile_count
-        FROM {DB_SCHEMA}.{RASTER_TABLE}
-        GROUP BY layer
-        ORDER BY tile_count DESC;
-    """,
-
-    "Average area_km per layer": f"""
-        SELECT layer, ROUND(AVG(area_km), 2) AS avg_area_km
-        FROM {DB_SCHEMA}.{RASTER_TABLE}
-        GROUP BY layer
-        ORDER BY avg_area_km DESC;
     """
 }
 
-# Execute and log all queries with timing
+# Run and log queries
 with open(output_path, "w", encoding="utf-8") as output_file:
     for name, sql in queries.items():
         output_file.write(f"\n\n### {name}\n")
@@ -119,10 +92,8 @@ with open(output_path, "w", encoding="utf-8") as output_file:
         except Exception as e:
             output_file.write(f"Query failed: {e}\n")
         end = time.perf_counter()
-        duration = round(end - start, 3)
-        output_file.write(f"\n⏱️ Query Time: {duration} sec\n")
+        output_file.write(f"\n⏱️ Query Time: {round(end - start, 3)} sec\n")
 
 cursor.close()
 conn.close()
-
-print(f"\nFinished all queries. Results saved to {output_path}")
+print(f"\n✅ Finished all queries. Results saved to {output_path}")
