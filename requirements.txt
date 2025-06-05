@@ -9,3 +9,7 @@ gradio
 llama-cpp-python
 python-dotenv
 mcp-monkdb
+transformers
+torch
+accelerate
+pandas
