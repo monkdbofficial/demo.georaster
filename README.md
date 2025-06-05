@@ -151,6 +151,28 @@ The queries are designed for both **data integrity** and **spatial intelligence*
 
 ---
 
+## Chat-Based Solution
+
+In this solution, we pass SQL commands to MonkDB and leverage the TinyLlama model to perform summarization, extract key insights, and more. The stack utilizes several key tools to enable seamless interaction between natural language, databases, and advanced NLP techniques.
+
+| Tool                  | Description                                                                                           |
+|-----------------------|-------------------------------------------------------------------------------------------------------|
+| [mcp-monkdb server](https://pypi.org/project/mcp-monkdb/) | AI gateway that bridges MonkDB with large language models, enabling SQL command execution and response handling. |
+| TinyLlama             | Lightweight LLM (1.1B parameters) fine-tuned for tasks such as text-to-SQL, summarization, and extraction of insights from database responses. Efficient for environments with limited resources, but can be swapped for larger models for improved output quality[2][4]. |
+| Pandas                | Used to structure and format the responses retrieved from MonkDB collections for downstream processing and display. |
+| HF transformers pipeline | Provides advanced NLP capabilities and model inference, supporting a wide range of language processing tasks. |
+
+Below is a short demonstration of the workflow:
+
+![Demo](./assets/geo_2.gif)
+
+[!CAUTION]
+> MonkDB's MCP server requires Python >=3.13. Run only `SELECT *` statements. Other SQL statements won't work with our MCP as it is not recommended. For more information, please go through this GitHub [page](https://github.com/monkdbofficial/monkdb-mcp).
+
+[!NOTE]
+> TinyLlama is a compact model (1.1B parameters) designed for efficiency. For higher quality outputs, consider replacing TinyLlama with larger models such as OpenAI, Anthropic, Grok, Gemini, Llama, or others as needed.
+
+---
 ## 📁 Output
 
 - Final output CSV contains:
