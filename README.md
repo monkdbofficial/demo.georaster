@@ -181,7 +181,8 @@ The queries are designed for both **data integrity** and **spatial intelligence*
   - `layer`
   - `path`
 
-- Saved query results to `query_results.txt` for external processing or audit.
+- Saved low hanging fruit kind of query results to this [file](./query_results.txt).
+- Saved medium to advanced query value results to this [file](./advanced_query_results.txt). This also has the time it has taken to execute complex queries. 
 
 ---
 
