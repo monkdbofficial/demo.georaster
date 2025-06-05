@@ -31,16 +31,15 @@ queries = {
         ORDER BY layer_versions DESC;
     """,
     "Compare area_km across different layers for same tile_id": f"""
-        WITH duplicates AS (
+        SELECT t.tile_id, t.layer, t.area_km
+        FROM {DB_SCHEMA}.{RASTER_TABLE} t
+        JOIN (
             SELECT tile_id
             FROM {DB_SCHEMA}.{RASTER_TABLE}
             GROUP BY tile_id
             HAVING COUNT(*) > 1
-        )
-        SELECT tile_id, layer, area_km
-        FROM {DB_SCHEMA}.{RASTER_TABLE}
-        WHERE tile_id IN (SELECT tile_id FROM duplicates)
-        ORDER BY tile_id, layer;
+        ) d ON t.tile_id = d.tile_id
+        ORDER BY t.tile_id, t.layer;
     """,
     "Tiles per layer distribution": f"""
         SELECT layer, COUNT(*) AS tile_count
@@ -53,6 +52,38 @@ queries = {
         FROM {DB_SCHEMA}.{RASTER_TABLE}
         GROUP BY layer
         ORDER BY avg_area_km DESC;
+    """,
+    "Top 5 tiles by area in each layer": f"""
+        SELECT layer, tile_id, area_km
+        FROM (
+            SELECT layer, tile_id, area_km,
+                   DENSE_RANK() OVER (PARTITION BY layer ORDER BY area_km DESC) AS rnk
+            FROM {DB_SCHEMA}.{RASTER_TABLE}
+        ) ranked
+        WHERE rnk <= 5
+        ORDER BY layer, rnk;
+    """,
+
+    "Resolution-wise tile count per layer": f"""
+        SELECT layer, resolution, COUNT(*) AS count
+        FROM {DB_SCHEMA}.{RASTER_TABLE}
+        GROUP BY layer, resolution
+        ORDER BY layer, resolution;
+    """,
+
+    "Geohash region diversity per layer (precision ~3)": f"""
+        SELECT layer, COUNT(DISTINCT substr(geohash(centroid), 1, 3)) AS region_diversity
+        FROM {DB_SCHEMA}.{RASTER_TABLE}
+        GROUP BY layer
+        ORDER BY region_diversity DESC;
+    """,
+
+    "Tiles near [85, 20] with area > 1000 km2": f"""
+        SELECT tile_id, layer, area_km, distance(centroid, [85.0, 20.0]) AS dist_m
+        FROM {DB_SCHEMA}.{RASTER_TABLE}
+        WHERE area_km > 1000
+        ORDER BY dist_m ASC
+        LIMIT 10;
     """
 }
 
