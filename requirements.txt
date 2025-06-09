@@ -14,3 +14,7 @@ torch
 accelerate
 pandas
 python-geohash
+contextily
+dask-geopandas
+geopandas
+matplotlib
