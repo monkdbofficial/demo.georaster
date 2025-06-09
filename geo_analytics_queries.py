@@ -2,10 +2,8 @@ import configparser
 import pandas as pd
 from monkdb import client
 from shapely import wkt
-from shapely.geometry import mapping
 from shapely.ops import unary_union
 import os
-import json
 
 # Load configuration
 config = configparser.ConfigParser()
@@ -84,18 +82,16 @@ except FileNotFoundError:
 
 sample_wkt = index_df["bbox"].iloc[0]
 
-# Convert WKT to GeoJSON for MonkDB
-geom = wkt.loads(sample_wkt)
-geojson_obj = mapping(geom)  # returns a dict in GeoJSON format
+# Ensure WKT is in [longitude latitude] order (WKT standard).
+# If your WKT is not, you must swap coordinates here before querying.
 
-# Pass as JSON string
 cursor.execute(f"""
     SELECT tile_id, layer, area_km, centroid
     FROM {DB_SCHEMA}.{RASTER_TABLE}
-    WHERE intersects(area, cast(? as geo_shape))
+    WHERE match(area, ?)
     ORDER BY area_km DESC
     LIMIT 100
-""", (json.dumps(geojson_obj),))
+""", (sample_wkt,))
 wkt_query_df = pd.DataFrame(cursor.fetchall())
 wkt_query_df.to_csv(os.path.join(
     output_dir, "wkt_intersection_results.csv"), index=False)
