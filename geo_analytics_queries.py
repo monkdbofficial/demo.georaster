@@ -85,7 +85,7 @@ sample_wkt = index_df["bbox"].iloc[0]
 cursor.execute(f"""
     SELECT tile_id, layer, area_km, centroid
     FROM {DB_SCHEMA}.{RASTER_TABLE}
-    WHERE intersects(area, ?)
+    WHERE intersects(area, cast(? as geo_shape))
     ORDER BY area_km DESC
     LIMIT 100
 """, (sample_wkt,))
