@@ -16,52 +16,41 @@ DB_PASSWORD = config['database']['DB_PASSWORD']
 DB_SCHEMA = config['database']['DB_SCHEMA']
 RASTER_TABLE = config['database']['RASTER_GEO_SHAPE_TABLE']
 
-# Result directory setup
 results_dir = os.path.join(os.getcwd(), "results")
 os.makedirs(results_dir, exist_ok=True)
 summary_path = os.path.join(results_dir, "advanced_query_summary.txt")
 
-# Connect to MonkDB
 conn = client.connect(
     f"http://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}",
     username=DB_USER
 )
 cursor = conn.cursor()
 
-# Helper to generate safe filenames
-
 
 def safe_filename(title: str) -> str:
     return re.sub(r'\W+', '_', title.lower()).strip('_') + ".csv"
 
 
-# Optimized queries for large datasets
+# Optimized queries
 queries = {
     "Tiles with multiple layer versions (duplicate tile_id)": f"""
-        WITH duplicated AS (
-            SELECT tile_id
-            FROM {DB_SCHEMA}.{RASTER_TABLE}
-            GROUP BY tile_id
-            HAVING COUNT(*) > 1
-        )
-        SELECT tile_id, COUNT(*) AS layer_versions
+        SELECT tile_id, COUNT(DISTINCT layer) AS layer_versions
         FROM {DB_SCHEMA}.{RASTER_TABLE}
-        WHERE tile_id IN (SELECT tile_id FROM duplicated)
         GROUP BY tile_id
+        HAVING COUNT(DISTINCT layer) > 1
         ORDER BY layer_versions DESC
         LIMIT 100
     """,
 
     "Compare area_km across different layers for same tile_id": f"""
-        WITH duplicated AS (
+        SELECT tile_id, layer, area_km
+        FROM {DB_SCHEMA}.{RASTER_TABLE}
+        WHERE tile_id IN (
             SELECT tile_id
             FROM {DB_SCHEMA}.{RASTER_TABLE}
             GROUP BY tile_id
-            HAVING COUNT(*) > 1
+            HAVING COUNT(DISTINCT layer) > 1
         )
-        SELECT tile_id, layer, area_km
-        FROM {DB_SCHEMA}.{RASTER_TABLE}
-        WHERE tile_id IN (SELECT tile_id FROM duplicated)
         ORDER BY tile_id, layer
         LIMIT 500
     """,
@@ -99,7 +88,7 @@ queries = {
     """,
 
     "Geohash region diversity per layer (precision ~3)": f"""
-        SELECT layer, COUNT(DISTINCT substr(geohash(centroid), 1, 3)) AS region_diversity
+        SELECT layer, COUNT(DISTINCT geohash3) AS region_diversity
         FROM {DB_SCHEMA}.{RASTER_TABLE}
         GROUP BY layer
         ORDER BY region_diversity DESC
@@ -109,14 +98,12 @@ queries = {
         SELECT tile_id, layer, area_km, distance(centroid, [85.0, 20.0]) AS dist_m
         FROM {DB_SCHEMA}.{RASTER_TABLE}
         WHERE area_km > 1000
-          AND centroid[0] BETWEEN 84.0 AND 86.0
-          AND centroid[1] BETWEEN 19.0 AND 21.0
+          AND geohash3 IN ('t1d', 't1e', 't1f', 't1g', 't1h')  -- Example geohash3 prefixes for region
         ORDER BY dist_m ASC
         LIMIT 10
     """
 }
 
-# Run queries and store results
 with open(summary_path, "w", encoding="utf-8") as summary:
     for name, sql in queries.items():
         summary.write(f"\n\n### {name}\n")
@@ -146,7 +133,6 @@ with open(summary_path, "w", encoding="utf-8") as summary:
             summary.write(f"⏱️ Duration: {duration} sec\n")
             print(f"❌ Failed: {name} — {e}")
 
-# Clean up
 cursor.close()
 conn.close()
 print(f"\n🎯 All queries completed. Results saved to: {results_dir}")

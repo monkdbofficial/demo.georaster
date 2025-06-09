@@ -13,3 +13,4 @@ transformers
 torch
 accelerate
 pandas
+geohash
