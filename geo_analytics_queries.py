@@ -42,8 +42,8 @@ output_filename = config['paths']['output_csv']
 tile_index_dir = os.path.join(tile_dir, "tile_index")
 TILE_INDEX_CSV = os.path.join(tile_index_dir, output_filename)
 
-# Output folder
-output_dir = os.getcwd()
+# Output folder: use 'results' directory in current working directory
+output_dir = os.path.join(os.getcwd(), "results")
 os.makedirs(output_dir, exist_ok=True)
 
 # Connect to MonkDB
@@ -69,7 +69,7 @@ cursor.execute(f"""
 """)
 stats_df = pd.DataFrame(cursor.fetchall())
 stats_df.to_csv(os.path.join(output_dir, "layer_statistics.csv"), index=False)
-print("✅ Saved: layer_statistics.csv")
+print("✅ Saved: results/layer_statistics.csv")
 
 # 2. Percentile distribution
 print("🔍 Running percentile distribution...")
@@ -87,7 +87,7 @@ cursor.execute(f"""
 percentile_df = pd.DataFrame(cursor.fetchall())
 percentile_df.to_csv(os.path.join(
     output_dir, "layer_percentiles.csv"), index=False)
-print("✅ Saved: layer_percentiles.csv")
+print("✅ Saved: results/layer_percentiles.csv")
 
 # 3. Tiles Intersecting with a Given WKT (from raster_tile_index.csv)
 print("📍 Querying for a sample WKT polygon intersection...")
@@ -112,7 +112,7 @@ cursor.execute(f"""
 wkt_query_df = pd.DataFrame(cursor.fetchall())
 wkt_query_df.to_csv(os.path.join(
     output_dir, "wkt_intersection_results.csv"), index=False)
-print("✅ Saved: wkt_intersection_results.csv")
+print("✅ Saved: results/wkt_intersection_results.csv")
 
 # 4. Client-side Boundary Extraction
 print("🧩 Computing union and bounding box on client side...")
@@ -125,9 +125,9 @@ with open(os.path.join(output_dir, "boundary_summary.txt"), "w", encoding="utf-8
     f.write(f"{bbox}\n\n")
     f.write("WKT of unified geometry:\n")
     f.write(union_geom.wkt)
-print("✅ Saved: boundary_summary.txt")
+print("✅ Saved: results/boundary_summary.txt")
 
 # Clean up
 cursor.close()
 conn.close()
-print("🎯 All analytics completed successfully. Outputs saved to working directory.")
+print("🎯 All analytics completed successfully. Outputs saved to 'results' directory.")
