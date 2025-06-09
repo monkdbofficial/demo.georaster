@@ -42,18 +42,18 @@ queries = {
         LIMIT 100
     """,
 
-    "Compare area_km across different layers for same tile_id": f"""
-        SELECT tile_id, layer, area_km
-        FROM {DB_SCHEMA}.{RASTER_TABLE}
-        WHERE tile_id IN (
-            SELECT tile_id
-            FROM {DB_SCHEMA}.{RASTER_TABLE}
-            GROUP BY tile_id
-            HAVING COUNT(DISTINCT layer) > 1
-        )
-        ORDER BY tile_id, layer
-        LIMIT 500
-    """,
+    # "Compare area_km across different layers for same tile_id": f"""
+    #     SELECT tile_id, layer, area_km
+    #     FROM {DB_SCHEMA}.{RASTER_TABLE}
+    #     WHERE tile_id IN (
+    #         SELECT tile_id
+    #         FROM {DB_SCHEMA}.{RASTER_TABLE}
+    #         GROUP BY tile_id
+    #         HAVING COUNT(DISTINCT layer) > 1
+    #     )
+    #     ORDER BY tile_id, layer
+    #     LIMIT 500
+    # """,
 
     "Tiles per layer distribution": f"""
         SELECT layer, COUNT(*) AS tile_count
