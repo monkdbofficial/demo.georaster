@@ -1,7 +1,7 @@
 # 🌍 Raster Tile Geospatial Indexing Demo with MonkDB
 
 > **Author:** MonkDB Engineering  
-> **Last Updated:** 2025-06-04
+> **Last Updated:** 2025-06-09
 
 ---
 
@@ -148,6 +148,17 @@ The queries are designed for both **data integrity** and **spatial intelligence*
 
 
 > Replace `schema.table` with `{DB_SCHEMA}.{RASTER_TABLE}`.
+
+---
+
+## Geo Analytics Queries
+
+| #  | Query/Output Name                         | Purpose                                                                                             | SQL Snippet / Method                                                                                                                                                                                                 | Benefits                                                                                         | AI Insight Use Case                                                                                             |
+|----|-------------------------------------------|-----------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------|
+| 1  | Layer Statistics Summary                  | Gives min, max, mean, stddev, and count of tile areas per layer                                     | `SELECT layer, COUNT(*), MIN(area_km), MAX(area_km), ROUND(AVG(area_km),2), ROUND(STDDEV(area_km),2) FROM schema.table GROUP BY layer;`                                        | Identifies data anomalies, standardizes expected tile sizes                                    | Detect layers with abnormal fragmentation; guide AI models to handle edge-case tiles                           |
+| 2  | Layer Percentile Distribution             | Understands spread of tile area across 25th, 50th, 75th, and 95th percentile                        | `SELECT layer, percentile(area_km, 0.25), 0.5, 0.75, 0.95 FROM schema.table GROUP BY layer;`                                                                                    | Helps define thresholds for area-based clustering or pruning                                    | Feed percentile curves into spatial anomaly detection or adaptive tiling AI models                             |
+| 3  | WKT-based Intersection Query              | Finds tiles intersecting a target WKT polygon (e.g., state boundary)                                | `SELECT tile_id, layer, area_km, centroid FROM schema.table WHERE intersects(area, ?) ORDER BY area_km DESC LIMIT 100;`                                                         | Quick lookup for all coverage tiles of a region                                                 | Enable AI to infer content availability, perform boundary-aware inference (e.g., floods in Telangana)          |
+| 4  | Boundary Union + Bounding Box (Client)    | Computes bounding geometry of entire tile set                                                       | `unary_union` + `.bounds` in Python                                                                                                                                            | Geo-referencing all tiles as one boundary block                                                  | Train AI to operate over the entire coverage zone; use unified WKT as input for global pattern learning        |
 
 ---
 
