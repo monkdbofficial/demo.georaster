@@ -28,7 +28,7 @@ TILE_INDEX_CSV = os.path.join(output_dir, output_filename)
 # Initialize geodetic calculator
 geod = Geod(ellps="WGS84")
 
-# --- 75 Layers Generation ---
+# Simulate 75 layers with resolution + simplification tolerance
 SIMULATED_LAYERS = []
 for i in range(75):
     if i < 25:
@@ -37,7 +37,6 @@ for i in range(75):
         SIMULATED_LAYERS.append((f"layer_{i+1}", "medium", 0.1))
     else:
         SIMULATED_LAYERS.append((f"layer_{i+1}", "low", 0.5))
-# ---
 
 # Connect to MonkDB
 try:
@@ -51,24 +50,29 @@ except Exception as e:
     print(f"Database connection error: {e}")
     exit(1)
 
-# Drop and recreate table with resolution
+# Drop and recreate table with optimized schema for sharding
 cursor.execute(f"DROP TABLE IF EXISTS {DB_SCHEMA}.{RASTER_TABLE}")
 print(f"Dropped table {DB_SCHEMA}.{RASTER_TABLE} (if existed).")
 
 cursor.execute(f"""
 CREATE TABLE IF NOT EXISTS {DB_SCHEMA}.{RASTER_TABLE} (
-    tile_id TEXT PRIMARY KEY,
+    tile_id TEXT,
     area GEO_SHAPE,
     path TEXT,
     layer TEXT,
     resolution TEXT,
     centroid GEO_POINT,
     area_km DOUBLE
-) WITH (number_of_replicas = 0);
+)
+CLUSTERED BY (tile_id)
+INTO 8 SHARDS
+WITH (number_of_replicas = 0);
 """)
-print(f"Created table {DB_SCHEMA}.{RASTER_TABLE}.")
+print(f"Created table {DB_SCHEMA}.{RASTER_TABLE} with clustering on tile_id.")
 
-# Utility
+# Utility to safely fix coordinate range
+
+
 def safe_wkt(polygon: Polygon) -> str:
     coords = list(polygon.exterior.coords)
     adjusted = []
@@ -78,7 +82,8 @@ def safe_wkt(polygon: Polygon) -> str:
         adjusted.append((lon, lat))
     return f"POLYGON (({', '.join([f'{x[0]} {x[1]}' for x in adjusted])}))"
 
-# Insert records across layers
+
+# Insert logic
 inserted_count = 0
 skipped_count = 0
 
@@ -94,24 +99,22 @@ with open(TILE_INDEX_CSV, "r", encoding="utf-8") as f:
         try:
             geom = wkt.loads(polygon_wkt)
             if not geom.is_valid:
-                print(f"Invalid polygon for tile {original_tile_id}, skipping.")
+                print(
+                    f"Invalid polygon for tile {original_tile_id}, skipping.")
                 skipped_count += 1
                 continue
 
             for layer, resolution, tolerance in SIMULATED_LAYERS:
-                # Simplify if needed
                 sim_geom = geom.simplify(tolerance) if tolerance > 0 else geom
                 adjusted_wkt = safe_wkt(sim_geom)
 
-                # Compute centroid
                 centroid_coords = list(sim_geom.centroid.coords)[0]
-                centroid = [round(centroid_coords[0], 6), round(centroid_coords[1], 6)]
+                centroid = [round(centroid_coords[0], 6),
+                            round(centroid_coords[1], 6)]
 
-                # Geodesic area in km²
                 area_m2, _ = geod.geometry_area_perimeter(sim_geom)
                 area_km = round(abs(area_m2) / 1e6, 3)
 
-                # Unique tile ID per layer
                 tile_id = f"{original_tile_id}__{layer}"
 
                 cursor.execute(f"""
@@ -128,7 +131,8 @@ with open(TILE_INDEX_CSV, "r", encoding="utf-8") as f:
                     area_km
                 ))
 
-                print(f"Inserted: {tile_id} [res={resolution}] (area_km={area_km})")
+                print(
+                    f"Inserted: {tile_id} [res={resolution}] (area_km={area_km})")
                 inserted_count += 1
 
         except Exception as e:
