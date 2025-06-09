@@ -15,6 +15,12 @@ DB_USER = config['database']['DB_USER']
 DB_PASSWORD = config['database']['DB_PASSWORD']
 DB_SCHEMA = config['database']['DB_SCHEMA']
 RASTER_TABLE = config['database']['RASTER_GEO_SHAPE_TABLE']
+TILE_DIR = config['paths']['tile_dir']
+TILE_CSV = config['paths']['output_csv']
+
+TILE_INDEX_CSV = os.path.join(TILE_DIR, TILE_CSV)
+output_dir = os.getcwd()
+os.makedirs(output_dir, exist_ok=True)
 
 # Connect to MonkDB
 conn = client.connect(
@@ -22,9 +28,6 @@ conn = client.connect(
     username=DB_USER
 )
 cursor = conn.cursor()
-
-output_dir = os.getcwd()
-os.makedirs(output_dir, exist_ok=True)
 
 # 1. Layer-wise Statistics
 print("🔍 Running layer-wise descriptive stats...")
@@ -42,8 +45,9 @@ cursor.execute(f"""
 """)
 stats_df = pd.DataFrame(cursor.fetchall())
 stats_df.to_csv(os.path.join(output_dir, "layer_statistics.csv"), index=False)
+print("✅ Saved: layer_statistics.csv")
 
-# Percentile distribution
+# 2. Percentile distribution
 print("🔍 Running percentile distribution...")
 cursor.execute(f"""
     SELECT
@@ -59,10 +63,18 @@ cursor.execute(f"""
 percentile_df = pd.DataFrame(cursor.fetchall())
 percentile_df.to_csv(os.path.join(
     output_dir, "layer_percentiles.csv"), index=False)
+print("✅ Saved: layer_percentiles.csv")
 
-# 2. Tiles Intersecting with a Given WKT (from CSV)
+# 3. Tiles Intersecting with a Given WKT (from CSV)
 print("📍 Querying for a sample WKT polygon intersection...")
-index_df = pd.read_csv("raster_tile_index.csv")
+try:
+    index_df = pd.read_csv(TILE_INDEX_CSV)
+except FileNotFoundError:
+    print(f"❌ Could not find file: {TILE_INDEX_CSV}")
+    cursor.close()
+    conn.close()
+    exit(1)
+
 sample_wkt = index_df["bbox"].iloc[0]
 
 cursor.execute(f"""
@@ -75,8 +87,9 @@ cursor.execute(f"""
 wkt_query_df = pd.DataFrame(cursor.fetchall())
 wkt_query_df.to_csv(os.path.join(
     output_dir, "wkt_intersection_results.csv"), index=False)
+print("✅ Saved: wkt_intersection_results.csv")
 
-# 3. Client-side Boundary Extraction
+# 4. Client-side Boundary Extraction
 print("🧩 Computing union and bounding box on client side...")
 geoms = [wkt.loads(w) for w in index_df["bbox"]]
 union_geom = unary_union(geoms)
@@ -87,7 +100,9 @@ with open(os.path.join(output_dir, "boundary_summary.txt"), "w", encoding="utf-8
     f.write(f"{bbox}\n\n")
     f.write("WKT of unified geometry:\n")
     f.write(union_geom.wkt)
+print("✅ Saved: boundary_summary.txt")
 
+# Clean up
 cursor.close()
 conn.close()
-print("✅ All tasks completed. Output saved to current directory.")
+print("🎯 All analytics completed successfully. Outputs saved to working directory.")
