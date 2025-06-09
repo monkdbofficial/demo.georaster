@@ -149,9 +149,7 @@ The queries are designed for both **data integrity** and **spatial intelligence*
 
 > Replace `schema.table` with `{DB_SCHEMA}.{RASTER_TABLE}`.
 
----
-
-## Geo Analytics Queries
+## Spatial Insights Queries
 
 | #  | Query/Output Name                         | Purpose                                                                                             | SQL Snippet / Method                                                                                                                                                                                                 | Benefits                                                                                         | AI Insight Use Case                                                                                             |
 |----|-------------------------------------------|-----------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------|
@@ -194,8 +192,7 @@ Below is a short demonstration of the workflow:
   - `layer`
   - `path`
 
-- Saved low hanging fruit kind of query results to this [file](./query_results.txt).
-- Saved medium to advanced query value results to this [file](./advanced_query_results.txt). This also has the time it has taken to execute complex queries. 
+- Outputs have been captured in the `results/` folder for core, advanced and spatial insight queries. 
 
 ---
 
