@@ -35,7 +35,7 @@ cursor.execute(f"""
         MIN(area_km) AS min_area,
         MAX(area_km) AS max_area,
         ROUND(AVG(area_km), 2) AS mean_area,
-        ROUND(stddev_pop(area_km), 2) AS stddev_area
+        ROUND(stddev(area_km), 2) AS stddev_area
     FROM {DB_SCHEMA}.{RASTER_TABLE}
     GROUP BY layer
     ORDER BY layer
