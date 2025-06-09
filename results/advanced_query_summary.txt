@@ -1,0 +1,40 @@
+
+
+### Tiles with multiple layer versions (duplicate tile_id)
+⚠️ No results returned.
+⏱️ Duration: 0.063 sec
+
+
+### Tiles per layer distribution
+✅ Query succeeded. Rows: 75
+⏱️ Duration: 0.038 sec
+📁 Saved to: /home/ubuntu/demo.georaster/results/tiles_per_layer_distribution.csv
+
+
+### Average area_km per layer
+✅ Query succeeded. Rows: 75
+⏱️ Duration: 0.046 sec
+📁 Saved to: /home/ubuntu/demo.georaster/results/average_area_km_per_layer.csv
+
+
+### Top 5 tiles by area in each layer
+✅ Query succeeded. Rows: 375
+⏱️ Duration: 0.251 sec
+📁 Saved to: /home/ubuntu/demo.georaster/results/top_5_tiles_by_area_in_each_layer.csv
+
+
+### Resolution-wise tile count per layer
+✅ Query succeeded. Rows: 75
+⏱️ Duration: 0.04 sec
+📁 Saved to: /home/ubuntu/demo.georaster/results/resolution_wise_tile_count_per_layer.csv
+
+
+### Geohash region diversity per layer (precision ~3)
+✅ Query succeeded. Rows: 75
+⏱️ Duration: 0.049 sec
+📁 Saved to: /home/ubuntu/demo.georaster/results/geohash_region_diversity_per_layer_precision_3.csv
+
+
+### Tiles near [85, 20] with area > 1000 km2
+⚠️ No results returned.
+⏱️ Duration: 0.034 sec

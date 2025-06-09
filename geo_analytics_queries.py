@@ -1,6 +1,7 @@
 import configparser
 import pandas as pd
 from monkdb import client
+from shapely.geometry import shape
 from shapely import wkt
 from shapely.geometry import Polygon
 from shapely.ops import unary_union
@@ -89,18 +90,17 @@ percentile_df.to_csv(os.path.join(
     output_dir, "layer_percentiles.csv"), index=False)
 print("✅ Saved: results/layer_percentiles.csv")
 
-# 3. Tiles Intersecting with a Given WKT (from raster_tile_index.csv)
+# 3. Tiles Intersecting with a Given WKT (from DB)
 print("📍 Querying for a sample WKT polygon intersection...")
-try:
-    index_df = pd.read_csv(TILE_INDEX_CSV)
-except FileNotFoundError:
-    print(f"❌ Could not find file: {TILE_INDEX_CSV}")
+cursor.execute(f"SELECT area FROM {DB_SCHEMA}.{RASTER_TABLE} LIMIT 1")
+sample_area_row = cursor.fetchone()
+if not sample_area_row:
+    print("❌ No geometries found in the database.")
     cursor.close()
     conn.close()
     exit(1)
-
-sample_wkt = index_df["bbox"].iloc[0]
-sample_wkt = swap_wkt_coords(sample_wkt)  # Swap (lat, lon) to (lon, lat)
+sample_geom = shape(sample_area_row[0])
+sample_wkt = sample_geom.wkt
 
 cursor.execute(f"""
     SELECT tile_id, layer, area_km, centroid
@@ -114,9 +114,11 @@ wkt_query_df.to_csv(os.path.join(
     output_dir, "wkt_intersection_results.csv"), index=False)
 print("✅ Saved: results/wkt_intersection_results.csv")
 
-# 4. Client-side Boundary Extraction
-print("🧩 Computing union and bounding box on client side...")
-geoms = [wkt.loads(swap_wkt_coords(w)) for w in index_df["bbox"]]
+# 4. Server-side Boundary Extraction (from DB)
+print("🧩 Computing union and bounding box from database polygons...")
+cursor.execute(f"SELECT area FROM {DB_SCHEMA}.{RASTER_TABLE}")
+areas = cursor.fetchall()
+geoms = [shape(row[0]) for row in areas]
 union_geom = unary_union(geoms)
 bbox = union_geom.bounds  # (minx, miny, maxx, maxy)
 

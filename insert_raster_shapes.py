@@ -1,6 +1,7 @@
 import csv
 import configparser
 import os
+import geohash
 from shapely import wkt
 from shapely.geometry import Polygon
 from pyproj import Geod
@@ -20,12 +21,10 @@ RASTER_TABLE = config['database']['RASTER_GEO_SHAPE_TABLE']
 tile_dir = config['paths']['tile_dir']
 output_filename = config['paths']['output_csv']
 
-# Construct full path to CSV
 output_dir = os.path.join(tile_dir, "tile_index")
 os.makedirs(output_dir, exist_ok=True)
 TILE_INDEX_CSV = os.path.join(output_dir, output_filename)
 
-# Initialize geodetic calculator
 geod = Geod(ellps="WGS84")
 
 # Simulate 75 layers with resolution + simplification tolerance
@@ -38,40 +37,6 @@ for i in range(75):
     else:
         SIMULATED_LAYERS.append((f"layer_{i+1}", "low", 0.5))
 
-# Connect to MonkDB
-try:
-    conn = client.connect(
-        f"http://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}",
-        username=DB_USER
-    )
-    cursor = conn.cursor()
-    print("Connected to MonkDB.")
-except Exception as e:
-    print(f"Database connection error: {e}")
-    exit(1)
-
-# Drop and recreate table with optimized schema for sharding
-cursor.execute(f"DROP TABLE IF EXISTS {DB_SCHEMA}.{RASTER_TABLE}")
-print(f"Dropped table {DB_SCHEMA}.{RASTER_TABLE} (if existed).")
-
-cursor.execute(f"""
-CREATE TABLE IF NOT EXISTS {DB_SCHEMA}.{RASTER_TABLE} (
-    tile_id TEXT,
-    area GEO_SHAPE,
-    path TEXT,
-    layer TEXT,
-    resolution TEXT,
-    centroid GEO_POINT,
-    area_km DOUBLE
-)
-CLUSTERED BY (tile_id)
-INTO 8 SHARDS
-WITH (number_of_replicas = 0);
-""")
-print(f"Created table {DB_SCHEMA}.{RASTER_TABLE} with clustering on tile_id.")
-
-# Utility to safely fix coordinate range
-
 
 def safe_wkt(polygon: Polygon) -> str:
     coords = list(polygon.exterior.coords)
@@ -83,12 +48,49 @@ def safe_wkt(polygon: Polygon) -> str:
     return f"POLYGON (({', '.join([f'{x[0]} {x[1]}' for x in adjusted])}))"
 
 
-# Insert logic
+def geohash3_from_coords(lon, lat):
+    # Use MonkDB's geohash function in DB, but for ingestion, just pass centroid
+    # Optionally, use a Python geohash lib for precomputation
+    return geohash.encode(lat, lon, precision=3)
+
+
+# Connect to MonkDB
+conn = client.connect(
+    f"http://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}",
+    username=DB_USER
+)
+cursor = conn.cursor()
+print("Connected to MonkDB.")
+
+# Drop and recreate table with optimized schema
+cursor.execute(f"DROP TABLE IF EXISTS {DB_SCHEMA}.{RASTER_TABLE}")
+print(f"Dropped table {DB_SCHEMA}.{RASTER_TABLE} (if existed).")
+
+cursor.execute(f"""
+CREATE TABLE IF NOT EXISTS {DB_SCHEMA}.{RASTER_TABLE} (
+    tile_id TEXT,
+    area GEO_SHAPE,
+    path TEXT,
+    layer TEXT,
+    resolution TEXT,
+    centroid GEO_POINT,
+    area_km DOUBLE,
+    geohash3 TEXT GENERATED ALWAYS AS substr(geohash(centroid), 1, 3)
+)
+CLUSTERED BY (layer) INTO 12 SHARDS
+WITH (number_of_replicas = 0);
+""")
+print(f"Created table {DB_SCHEMA}.{RASTER_TABLE} clustered by layer.")
+
+# Ingestion
 inserted_count = 0
 skipped_count = 0
+batch = []
+BATCH_SIZE = 500
 
 with open(TILE_INDEX_CSV, "r", encoding="utf-8") as f:
     reader = csv.reader(f)
+    header = next(reader)  # skip header
     for row in reader:
         if len(row) != 4:
             skipped_count += 1
@@ -99,29 +101,20 @@ with open(TILE_INDEX_CSV, "r", encoding="utf-8") as f:
         try:
             geom = wkt.loads(polygon_wkt)
             if not geom.is_valid:
-                print(
-                    f"Invalid polygon for tile {original_tile_id}, skipping.")
                 skipped_count += 1
                 continue
 
             for layer, resolution, tolerance in SIMULATED_LAYERS:
                 sim_geom = geom.simplify(tolerance) if tolerance > 0 else geom
                 adjusted_wkt = safe_wkt(sim_geom)
-
                 centroid_coords = list(sim_geom.centroid.coords)[0]
                 centroid = [round(centroid_coords[0], 6),
                             round(centroid_coords[1], 6)]
-
                 area_m2, _ = geod.geometry_area_perimeter(sim_geom)
                 area_km = round(abs(area_m2) / 1e6, 3)
-
                 tile_id = f"{original_tile_id}__{layer}"
 
-                cursor.execute(f"""
-                    INSERT INTO {DB_SCHEMA}.{RASTER_TABLE}
-                    (tile_id, area, path, layer, resolution, centroid, area_km)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
-                """, (
+                batch.append((
                     tile_id,
                     adjusted_wkt,
                     file_path,
@@ -131,15 +124,29 @@ with open(TILE_INDEX_CSV, "r", encoding="utf-8") as f:
                     area_km
                 ))
 
-                print(
-                    f"Inserted: {tile_id} [res={resolution}] (area_km={area_km})")
-                inserted_count += 1
+                if len(batch) >= BATCH_SIZE:
+                    cursor.executemany(
+                        f"""INSERT INTO {DB_SCHEMA}.{RASTER_TABLE}
+                        (tile_id, area, path, layer, resolution, centroid, area_km)
+                        VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                        batch
+                    )
+                    inserted_count += len(batch)
+                    batch.clear()
 
         except Exception as e:
-            print(f"Failed to insert {original_tile_id}: {e}")
             skipped_count += 1
 
-# Summary
+# Insert any remaining
+if batch:
+    cursor.executemany(
+        f"""INSERT INTO {DB_SCHEMA}.{RASTER_TABLE}
+        (tile_id, area, path, layer, resolution, centroid, area_km)
+        VALUES (?, ?, ?, ?, ?, ?, ?)""",
+        batch
+    )
+    inserted_count += len(batch)
+
 cursor.execute(f"SELECT COUNT(*) FROM {DB_SCHEMA}.{RASTER_TABLE}")
 total_rows = cursor.fetchone()[0]
 
