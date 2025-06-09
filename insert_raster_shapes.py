@@ -1,7 +1,7 @@
 import csv
 import configparser
 import os
-import Geohash
+import geohash
 from shapely import wkt
 from shapely.geometry import Polygon
 from pyproj import Geod
