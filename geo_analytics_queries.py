@@ -2,8 +2,27 @@ import configparser
 import pandas as pd
 from monkdb import client
 from shapely import wkt
+from shapely.geometry import Polygon
 from shapely.ops import unary_union
 import os
+
+
+def swap_wkt_coords(wkt_str):
+    """
+    Swap coordinates in a WKT POLYGON from (lat lon) to (lon lat).
+    """
+    geom = wkt.loads(wkt_str)
+    if not isinstance(geom, Polygon):
+        raise ValueError("Only POLYGON WKT supported in this helper.")
+    # Swap x and y for each point
+    new_exterior = [(y, x) for x, y in geom.exterior.coords]
+    new_interiors = [
+        [(y, x) for x, y in interior.coords]
+        for interior in geom.interiors
+    ]
+    new_geom = Polygon(new_exterior, new_interiors)
+    return new_geom.wkt
+
 
 # Load configuration
 config = configparser.ConfigParser()
@@ -81,14 +100,12 @@ except FileNotFoundError:
     exit(1)
 
 sample_wkt = index_df["bbox"].iloc[0]
-
-# Ensure WKT is in [longitude latitude] order (WKT standard).
-# If your WKT is not, you must swap coordinates here before querying.
+sample_wkt = swap_wkt_coords(sample_wkt)  # Swap (lat, lon) to (lon, lat)
 
 cursor.execute(f"""
     SELECT tile_id, layer, area_km, centroid
     FROM {DB_SCHEMA}.{RASTER_TABLE}
-    WHERE match(area, ?)
+    WHERE intersects(area, ?)
     ORDER BY area_km DESC
     LIMIT 100
 """, (sample_wkt,))
@@ -99,7 +116,7 @@ print("✅ Saved: wkt_intersection_results.csv")
 
 # 4. Client-side Boundary Extraction
 print("🧩 Computing union and bounding box on client side...")
-geoms = [wkt.loads(w) for w in index_df["bbox"]]
+geoms = [wkt.loads(swap_wkt_coords(w)) for w in index_df["bbox"]]
 union_geom = unary_union(geoms)
 bbox = union_geom.bounds  # (minx, miny, maxx, maxy)
 
