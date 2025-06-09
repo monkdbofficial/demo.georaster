@@ -8,7 +8,7 @@ pyproj
 gradio
 llama-cpp-python
 python-dotenv
-mcp-monkdb
+# mcp-monkdb
 transformers
 torch
 accelerate
