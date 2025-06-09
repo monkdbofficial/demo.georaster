@@ -4,14 +4,14 @@
 Empty DataFrame
 Columns: []
 Index: []
-⏱️ Query Time: 0.314 sec
+⏱️ Query Time: 0.236 sec
 
 
 ### Compare area_km across different layers for same tile_id
 Empty DataFrame
 Columns: []
 Index: []
-⏱️ Query Time: 0.236 sec
+⏱️ Query Time: 0.242 sec
 
 
 ### Tiles per layer distribution
@@ -20,7 +20,7 @@ Index: []
     slope_map_simulated 946
            hypso_relief 946
 surface_water_simulated 946
-⏱️ Query Time: 0.273 sec
+⏱️ Query Time: 0.234 sec
 
 
 ### Average area_km per layer
@@ -29,7 +29,7 @@ surface_water_simulated 946
     slope_map_simulated 564829.05
            hypso_relief 564829.05
 surface_water_simulated 564829.05
-⏱️ Query Time: 0.303 sec
+⏱️ Query Time: 0.248 sec
 
 
 ### Top 5 tiles by area in each layer
@@ -878,7 +878,7 @@ surface_water_simulated HYP_HR_SR_OB_DR_13_14__surface_water_simulated 860031.31
 surface_water_simulated HYP_HR_SR_OB_DR_13_38__surface_water_simulated 860031.315
 surface_water_simulated HYP_HR_SR_OB_DR_13_07__surface_water_simulated 860031.315
 surface_water_simulated HYP_HR_SR_OB_DR_13_05__surface_water_simulated 860031.315
-⏱️ Query Time: 0.946 sec
+⏱️ Query Time: 0.743 sec
 
 
 ### Resolution-wise tile count per layer
@@ -887,7 +887,7 @@ surface_water_simulated HYP_HR_SR_OB_DR_13_05__surface_water_simulated 860031.31
    land_cover_simulated   medium 946
     slope_map_simulated very_low 946
 surface_water_simulated      low 946
-⏱️ Query Time: 0.227 sec
+⏱️ Query Time: 0.235 sec
 
 
 ### Geohash region diversity per layer (precision ~3)
@@ -896,7 +896,7 @@ surface_water_simulated      low 946
     slope_map_simulated 946
            hypso_relief 946
 surface_water_simulated 946
-⏱️ Query Time: 0.235 sec
+⏱️ Query Time: 0.236 sec
 
 
 ### Tiles near [85, 20] with area > 1000 km2
@@ -911,4 +911,4 @@ HYP_HR_SR_OB_DR_09_31__surface_water_simulated surface_water_simulated 856404.56
     HYP_HR_SR_OB_DR_09_31__slope_map_simulated     slope_map_simulated 856404.569 572473.248256
            HYP_HR_SR_OB_DR_08_32__hypso_relief            hypso_relief 807577.387 772125.646659
 HYP_HR_SR_OB_DR_08_32__surface_water_simulated surface_water_simulated 807577.387 772125.646659
-⏱️ Query Time: 0.271 sec
+⏱️ Query Time: 0.241 sec

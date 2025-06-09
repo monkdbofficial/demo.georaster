@@ -28,13 +28,16 @@ TILE_INDEX_CSV = os.path.join(output_dir, output_filename)
 # Initialize geodetic calculator
 geod = Geod(ellps="WGS84")
 
-# Resolution tiers
-SIMULATED_LAYERS = [
-    ("hypso_relief", "high", 0.0),
-    ("land_cover_simulated", "medium", 0.1),
-    ("surface_water_simulated", "low", 0.5),
-    ("slope_map_simulated", "very_low", 1.0)
-]
+# --- 75 Layers Generation ---
+SIMULATED_LAYERS = []
+for i in range(75):
+    if i < 25:
+        SIMULATED_LAYERS.append((f"layer_{i+1}", "high", 0.0))
+    elif i < 50:
+        SIMULATED_LAYERS.append((f"layer_{i+1}", "medium", 0.1))
+    else:
+        SIMULATED_LAYERS.append((f"layer_{i+1}", "low", 0.5))
+# ---
 
 # Connect to MonkDB
 try:
@@ -66,8 +69,6 @@ CREATE TABLE IF NOT EXISTS {DB_SCHEMA}.{RASTER_TABLE} (
 print(f"Created table {DB_SCHEMA}.{RASTER_TABLE}.")
 
 # Utility
-
-
 def safe_wkt(polygon: Polygon) -> str:
     coords = list(polygon.exterior.coords)
     adjusted = []
@@ -76,7 +77,6 @@ def safe_wkt(polygon: Polygon) -> str:
         lat = max(min(lat, 89.999999), -89.999999)
         adjusted.append((lon, lat))
     return f"POLYGON (({', '.join([f'{x[0]} {x[1]}' for x in adjusted])}))"
-
 
 # Insert records across layers
 inserted_count = 0
@@ -94,8 +94,7 @@ with open(TILE_INDEX_CSV, "r", encoding="utf-8") as f:
         try:
             geom = wkt.loads(polygon_wkt)
             if not geom.is_valid:
-                print(
-                    f"⚠️ Invalid polygon for tile {original_tile_id}, skipping.")
+                print(f"Invalid polygon for tile {original_tile_id}, skipping.")
                 skipped_count += 1
                 continue
 
@@ -106,8 +105,7 @@ with open(TILE_INDEX_CSV, "r", encoding="utf-8") as f:
 
                 # Compute centroid
                 centroid_coords = list(sim_geom.centroid.coords)[0]
-                centroid = [round(centroid_coords[0], 6),
-                            round(centroid_coords[1], 6)]
+                centroid = [round(centroid_coords[0], 6), round(centroid_coords[1], 6)]
 
                 # Geodesic area in km²
                 area_m2, _ = geod.geometry_area_perimeter(sim_geom)
@@ -130,8 +128,7 @@ with open(TILE_INDEX_CSV, "r", encoding="utf-8") as f:
                     area_km
                 ))
 
-                print(
-                    f"Inserted: {tile_id} [res={resolution}] (area_km={area_km})")
+                print(f"Inserted: {tile_id} [res={resolution}] (area_km={area_km})")
                 inserted_count += 1
 
         except Exception as e:
