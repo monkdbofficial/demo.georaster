@@ -15,8 +15,10 @@ DB_PASSWORD = config['database']['DB_PASSWORD']
 DB_SCHEMA = config['database']['DB_SCHEMA']
 RASTER_TABLE = config['database']['RASTER_GEO_SHAPE_TABLE']
 
-# Output file path
-output_path = os.path.join(os.getcwd(), "query_results_with_layers.txt")
+# Output file path in 'results' directory
+results_dir = os.path.join(os.getcwd(), "results")
+os.makedirs(results_dir, exist_ok=True)
+output_path = os.path.join(results_dir, "query_results_with_layers.txt")
 
 # Establish MonkDB connection
 conn = client.connect(
