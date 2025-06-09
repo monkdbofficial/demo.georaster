@@ -48,10 +48,10 @@ print("🔍 Running percentile distribution...")
 cursor.execute(f"""
     SELECT
         layer,
-        percentile_cont(0.25) WITHIN GROUP (ORDER BY area_km) AS p25,
-        percentile_cont(0.5) WITHIN GROUP (ORDER BY area_km) AS median,
-        percentile_cont(0.75) WITHIN GROUP (ORDER BY area_km) AS p75,
-        percentile_cont(0.95) WITHIN GROUP (ORDER BY area_km) AS p95
+        percentile(area_km, 0.25) AS p25,
+        percentile(area_km, 0.5) AS median,
+        percentile(area_km, 0.75) AS p75,
+        percentile(area_km, 0.95) AS p95
     FROM {DB_SCHEMA}.{RASTER_TABLE}
     GROUP BY layer
     ORDER BY layer
