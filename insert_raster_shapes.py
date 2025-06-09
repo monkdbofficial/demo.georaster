@@ -51,7 +51,7 @@ def safe_wkt(polygon: Polygon) -> str:
 def geohash3_from_coords(lon, lat):
     # Use MonkDB's geohash function in DB, but for ingestion, just pass centroid
     # Optionally, use a Python geohash lib for precomputation
-    return Geohash.encode(lat, lon, precision=3)
+    return geohash.encode(lat, lon, precision=3)
 
 
 # Connect to MonkDB
