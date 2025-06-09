@@ -9,16 +9,21 @@ import os
 config = configparser.ConfigParser()
 config.read("config.ini", encoding="utf-8")
 
+# Database config
 DB_HOST = config['database']['DB_HOST']
 DB_PORT = config['database']['DB_PORT']
 DB_USER = config['database']['DB_USER']
 DB_PASSWORD = config['database']['DB_PASSWORD']
 DB_SCHEMA = config['database']['DB_SCHEMA']
 RASTER_TABLE = config['database']['RASTER_GEO_SHAPE_TABLE']
-TILE_DIR = config['paths']['tile_dir']
-TILE_CSV = config['paths']['output_csv']
 
-TILE_INDEX_CSV = os.path.join(TILE_DIR, TILE_CSV)
+# Path resolution (same as insert script)
+tile_dir = config['paths']['tile_dir']
+output_filename = config['paths']['output_csv']
+tile_index_dir = os.path.join(tile_dir, "tile_index")
+TILE_INDEX_CSV = os.path.join(tile_index_dir, output_filename)
+
+# Output folder
 output_dir = os.getcwd()
 os.makedirs(output_dir, exist_ok=True)
 
@@ -65,7 +70,7 @@ percentile_df.to_csv(os.path.join(
     output_dir, "layer_percentiles.csv"), index=False)
 print("✅ Saved: layer_percentiles.csv")
 
-# 3. Tiles Intersecting with a Given WKT (from CSV)
+# 3. Tiles Intersecting with a Given WKT (from raster_tile_index.csv)
 print("📍 Querying for a sample WKT polygon intersection...")
 try:
     index_df = pd.read_csv(TILE_INDEX_CSV)
