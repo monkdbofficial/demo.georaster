@@ -193,7 +193,13 @@ Below is a short demonstration of the workflow:
   - `path`
 
 - Outputs have been captured in the `results/` folder for core, advanced and spatial insight queries. 
-
+- The column names in spatial intelligence query results which were captured in the csv are:
+  - `layer_statistics`
+    - `layer`, `tile_count`, `min_area`, `max_area`, `mean_area`, `stddev_area`.
+  - `layer_percentiles`
+    - `layer`, `p25`, `median`, `p75`, `p95`
+  - `wkt_intersection_results`
+    - `tile_id`, `layer`, `area_km`, `centroid`.
 ---
 
 ## ✅ Results and Observations
