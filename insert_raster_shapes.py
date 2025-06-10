@@ -50,6 +50,21 @@ def safe_wkt(polygon: Polygon) -> str:
     return f"POLYGON (({', '.join([f'{x[0]} {x[1]}' for x in adjusted])}))"
 
 
+def dynamic_simplify(geom: Polygon, resolution: str) -> Polygon:
+    num_coords = len(geom.exterior.coords)
+    if resolution == "high":
+        tol = 0.0001 if num_coords > 1000 else 0.0003
+    elif resolution == "medium":
+        tol = 0.001 if num_coords > 1000 else 0.005
+    else:  # low
+        tol = 0.01 if num_coords > 1000 else 0.025
+
+    simplified = geom.simplify(tol, preserve_topology=True)
+    if simplified.is_empty or not simplified.is_valid or len(simplified.exterior.coords) < 4:
+        return geom
+    return simplified
+
+
 # Connect to MonkDB
 conn = client.connect(
     f"http://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}",
@@ -101,8 +116,7 @@ with open(TILE_INDEX_CSV, "r", encoding="utf-8") as f:
                 continue
 
             for layer, resolution, tolerance, x_offset, y_offset in SIMULATED_LAYERS:
-                # Add variation: simplify + shift
-                sim_geom = geom.simplify(tolerance) if tolerance > 0 else geom
+                sim_geom = dynamic_simplify(geom, resolution)
                 translated_geom = translate(
                     sim_geom, xoff=x_offset, yoff=y_offset)
 
