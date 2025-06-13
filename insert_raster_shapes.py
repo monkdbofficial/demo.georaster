@@ -19,7 +19,7 @@ DB_PASSWORD = config['database']['DB_PASSWORD']
 DB_SCHEMA = config['database']['DB_SCHEMA']
 RASTER_TABLE = config['database']['RASTER_GEO_SHAPE_TABLE_V2']
 
-sentinel_data_dir = config['paths']['tile_dir']
+sentinel_data_dir = config['paths']['sentinel_data_dir']
 output_filename = config['paths']['output_csv_v2']
 output_dir = os.path.join(sentinel_data_dir, "tile_index")
 os.makedirs(output_dir, exist_ok=True)
