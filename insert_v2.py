@@ -2,6 +2,7 @@ import csv
 import configparser
 import os
 from shapely import wkt
+from shapely.geometry import mapping
 from monkdb import client
 
 # Load config
@@ -53,7 +54,7 @@ BATCH_SIZE = 500
 
 with open(TILE_INDEX_CSV, "r", encoding="utf-8") as f:
     reader = csv.reader(f)
-    header = next(reader)
+    header = next(reader)  # ['tile_id', 'bbox', 'path', 'layer']
 
     for row in reader:
         if len(row) != 4:
@@ -68,7 +69,9 @@ with open(TILE_INDEX_CSV, "r", encoding="utf-8") as f:
                 skipped_count += 1
                 continue
 
-            batch.append((tile_id, polygon_wkt, file_path, layer))
+            geojson = mapping(geom)  # Convert to GeoJSON dict
+
+            batch.append((tile_id, geojson, file_path, layer))
 
             if len(batch) >= BATCH_SIZE:
                 cursor.executemany(
@@ -95,7 +98,7 @@ if batch:
     inserted_count += len(batch)
 
 # Refresh for visibility
-cursor.execute(f"REFRESH TABLE {DB_SCHEMA}.{RASTER_TABLE}")
+# cursor.execute(f"REFRESH TABLE {DB_SCHEMA}.{RASTER_TABLE}")
 cursor.execute(f"SELECT COUNT(*) FROM {DB_SCHEMA}.{RASTER_TABLE}")
 total_rows = cursor.fetchone()[0]
 
