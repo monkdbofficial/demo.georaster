@@ -33,13 +33,13 @@ We constructed a large-scale synthetic geospatial tile index using real metadata
 | Source product origin date | 2025-06-12T15:57:26Z, 2025-06-12T15:55:59Z                                                            |
 | Tile id                    | 30UVA                                                                                                 |
 
-This seed tile was accompanied by associated raster .tif paths and footprint polygons.
+This seed tile was accompanied by associated raster `*.tif` paths and footprint polygons.
 
 ---
 
 ### 🔁 Synthetic Amplification
 
-Since the original dataset contained only *36 tile footprints*, we amplified it to `100,000` entries for scalability and stress testing purposes. The process involved:
+Since the original dataset contained only *36 tile footprints*, we amplified it to *100,000* entries for scalability and stress testing purposes. The process involved:
 
 - Spatial translations and perturbations of original WKT polygons.
 - Systematic duplication across varying `layer`, `resolution`, and `path` values.
@@ -49,13 +49,13 @@ Each row in the resulting dataset simulates a unique raster tile footprint suita
 
 ### 🔹 Why This Dataset?
 
-- Real-world provenance (based on actual Sentinel-2 tile metadata)
-- Highly scalable: 100K records mimic high-throughput satellite ingestion pipelines
-- Rich geospatial structure:
+- **Real-world provenance** (based on actual Sentinel-2 tile metadata)
+- **Highly scalable**: 100K records mimic high-throughput satellite ingestion pipelines
+- **Rich geospatial structure**:
   - `area`: WKT `GEO_SHAPE` (polygon)
   - `centroid`: derived `GEO_POINT`
   - `geohash3`: spatial region hashing for clustering and diversity checks
-- Used for:
+- **Used for**:
   - intersects, within, distance, and area benchmarks
   - Advanced queries like percentile distributions, bounding box coverage, resolution-layer analysis, and geohash diversity
   - Evaluating MonkDB's performance for Earth observation-style workloads
@@ -149,6 +149,7 @@ This metadata is used to compute:
 - **Polygon** for the bounding box (`GEO_SHAPE`)
 - **Centroid** of the tile (`GEO_POINT`)
 - **Area** using `pyproj.Geod` for Earth-accurate results
+
 
 > **MonkDB requires all `GEO_SHAPE` column entries to be spatially referenced.** 
 
@@ -279,9 +280,11 @@ Below is a short demonstration of the workflow:
 - End-to-end queries such as percentile distribution, bounding box unions, region diversity, and intersection tests were executed on **MonkDB with sub-second response times**
 - Results show MonkDB’s **spatial indexing, layer-wise analytics, and vector-tile handling are production-ready**, even under synthetic scale and multiplexed conditions
 
+> The updated results are stored in `results/v3` directory.
+
 ---
 
-## 🚀 Real-World Relevance (e.g., Telecom, Smart Infra)
+## 🚀 Real-World Relevance (e.g., Telecom, Smart Infra, and more)
 
 - **Edge-aware tile indexing** for 5G tower planning or multi-resolution coverage heatmaps (e.g., high-res elevation + low-res land use).
 - **Disaster zone geofencing** using `within()` + radius search on multi-layered raster datasets (e.g., flood risk + slope map + urban density).
