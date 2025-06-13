@@ -77,7 +77,7 @@ with open(TILE_INDEX_CSV, "r", encoding="utf-8") as f:
                 cursor.executemany(
                     f"""INSERT INTO {DB_SCHEMA}.{RASTER_TABLE}
                     (tile_id, area, path, layer)
-                    VALUES (?, ?, ?, ?)""",
+                    VALUES (%s, %s, %s, %s)""",
                     batch
                 )
                 inserted_count += len(batch)
@@ -92,7 +92,7 @@ if batch:
     cursor.executemany(
         f"""INSERT INTO {DB_SCHEMA}.{RASTER_TABLE}
         (tile_id, area, path, layer)
-        VALUES (?, ?, ?, ?)""",
+        VALUES (%s, %s, %s, %s)""",
         batch
     )
     inserted_count += len(batch)
