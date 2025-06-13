@@ -13,12 +13,12 @@ DB_PORT = config['database']['DB_PORT']
 DB_USER = config['database']['DB_USER']
 DB_PASSWORD = config['database']['DB_PASSWORD']
 DB_SCHEMA = config['database']['DB_SCHEMA']
-RASTER_TABLE = config['database']['RASTER_GEO_SHAPE_TABLE']
+RASTER_TABLE = config['database']['RASTER_GEO_SHAPE_TABLE_V2']
 
 # Output file path in 'results' directory
-results_dir = os.path.join(os.getcwd(), "results")
+results_dir = os.path.join(os.getcwd(), "results", "v3")
 os.makedirs(results_dir, exist_ok=True)
-output_path = os.path.join(results_dir, "query_results_with_layers.txt")
+output_path = os.path.join(results_dir, "core_query_results.txt")
 
 # Establish MonkDB connection
 conn = client.connect(
@@ -50,16 +50,20 @@ queries = {
         LIMIT 10;
     """,
 
-    "Tiles in layer = hypso_relief": f"""
+    "Tiles in layer = SCL_60m": f"""
         SELECT tile_id, path
         FROM {DB_SCHEMA}.{RASTER_TABLE}
-        WHERE layer = 'hypso_relief';
+        WHERE layer = 'SCL_60m';
     """,
 
     "Centroids within 1000km of [85, 20]": f"""
-        SELECT tile_id, centroid
+        SELECT tile_id, layer, resolution, centroid, area_km,
+           distance(centroid, [85.0, 20.0]) AS dist_m
         FROM {DB_SCHEMA}.{RASTER_TABLE}
-        WHERE distance(centroid, [85.0, 20.0]) < 1000000;
+        WHERE geohash3 IN ('t1d', 't1e', 't1f', 't1g', 't1h')
+      AND distance(centroid, [85.0, 20.0]) < 1000000
+    ORDER BY dist_m ASC
+    LIMIT 20;
     """,
 
     "Count of tiles per geohash region (precision ~3)": f"""

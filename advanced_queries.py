@@ -14,11 +14,11 @@ DB_PORT = config['database']['DB_PORT']
 DB_USER = config['database']['DB_USER']
 DB_PASSWORD = config['database']['DB_PASSWORD']
 DB_SCHEMA = config['database']['DB_SCHEMA']
-RASTER_TABLE = config['database']['RASTER_GEO_SHAPE_TABLE']
+RASTER_TABLE = config['database']['RASTER_GEO_SHAPE_TABLE_V2']
 
-results_dir = os.path.join(os.getcwd(), "results")
+results_dir = os.path.join(os.getcwd(), "results", "v3")
 os.makedirs(results_dir, exist_ok=True)
-summary_path = os.path.join(results_dir, "advanced_query_summary.txt")
+summary_path = os.path.join(results_dir, "query_adv_v3.txt")
 
 conn = client.connect(
     f"http://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}",
@@ -95,10 +95,10 @@ queries = {
     """,
 
     "Tiles near [85, 20] with area > 1000 km2": f"""
-        SELECT tile_id, layer, area_km, distance(centroid, [85.0, 20.0]) AS dist_m
+        SELECT tile_id, layer, area_km, distance(centroid, [-3.6, 50.05]) AS dist_m
         FROM {DB_SCHEMA}.{RASTER_TABLE}
-        WHERE area_km > 1000
-          AND geohash3 IN ('t1d', 't1e', 't1f', 't1g', 't1h')  -- Example geohash3 prefixes for region
+        WHERE area_km > 100
+          AND geohash3 IN ('gbs', 'gbt', 'gbu', 'gbv', 'gbw')  -- Example geohash3 prefixes for region
         ORDER BY dist_m ASC
         LIMIT 10
     """
