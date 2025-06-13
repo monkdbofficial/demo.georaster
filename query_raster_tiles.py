@@ -50,10 +50,10 @@ queries = {
         LIMIT 10;
     """,
 
-    "Tiles in layer = hypso_relief": f"""
+    "Tiles in layer = SCL_60m": f"""
         SELECT tile_id, path
         FROM {DB_SCHEMA}.{RASTER_TABLE}
-        WHERE layer = 'hypso_relief';
+        WHERE layer = 'SCL_60m';
     """,
 
     "Centroids within 1000km of [85, 20]": f"""
