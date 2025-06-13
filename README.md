@@ -329,6 +329,7 @@ Below is a short demonstration of the workflow:
 - Results show MonkDB’s **spatial indexing, layer-wise analytics, and vector-tile handling are production-ready**, even under synthetic scale and multiplexed conditions.
 
 > Why MonkDB is relevant for these kind of advanced use cases vis-a-vis PostgreSQL + PostGIS has been explained in [this](./MonkDB_Benefits.md) document.
+
 > The updated results are stored in `results/v3` directory.
 
 ---
