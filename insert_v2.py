@@ -37,7 +37,7 @@ print(f"Dropped table {DB_SCHEMA}.{RASTER_TABLE} (if existed).")
 cursor.execute(f"""
 CREATE TABLE IF NOT EXISTS {DB_SCHEMA}.{RASTER_TABLE} (
     tile_id TEXT,
-    area GEO_SHAPE,
+    bbox GEO_SHAPE,
     path TEXT,
     layer TEXT
 )
@@ -76,7 +76,7 @@ with open(TILE_INDEX_CSV, "r", encoding="utf-8") as f:
             if len(batch) >= BATCH_SIZE:
                 cursor.executemany(
                     f"""INSERT INTO {DB_SCHEMA}.{RASTER_TABLE}
-                    (tile_id, area, path, layer)
+                    (tile_id, bbox, path, layer)
                     VALUES (?, ?, ?, ?)""",
                     batch
                 )
@@ -91,7 +91,7 @@ with open(TILE_INDEX_CSV, "r", encoding="utf-8") as f:
 if batch:
     cursor.executemany(
         f"""INSERT INTO {DB_SCHEMA}.{RASTER_TABLE}
-        (tile_id, area, path, layer)
+        (tile_id, bbox, path, layer)
         VALUES (?, ?, ?, ?)""",
         batch
     )
