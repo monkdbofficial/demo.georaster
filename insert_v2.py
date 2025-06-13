@@ -2,7 +2,9 @@ import csv
 import configparser
 import os
 from shapely import wkt
-from shapely.geometry import mapping
+from shapely.geometry import Polygon
+from shapely.ops import transform as shapely_transform
+from pyproj import Geod, Transformer
 from monkdb import client
 
 # Load config
@@ -16,27 +18,14 @@ DB_PASSWORD = config['database']['DB_PASSWORD']
 DB_SCHEMA = config['database']['DB_SCHEMA']
 RASTER_TABLE = config['database']['RASTER_GEO_SHAPE_TABLE_V2']
 
-sentinel_data_dir = config['sentinel']['sentinel_data_dir']
-output_filename = config['paths']['output_csv_v2']
-output_dir = os.path.join(sentinel_data_dir, "tile_index")
-os.makedirs(output_dir, exist_ok=True)
+tile_dir = config['sentinel']['sentinel_data_dir_v2']
+output_filename = config['paths']['output_csv_v3']
+output_dir = os.path.join(tile_dir, "tile_index")
 TILE_INDEX_CSV = os.path.join(output_dir, output_filename)
 
-# ---- FILE CHECKS ----
-print(f"Checking CSV file: {TILE_INDEX_CSV}")
-if not os.path.exists(TILE_INDEX_CSV):
-    print(f"❌ File not found: {TILE_INDEX_CSV}")
-    exit(1)
-else:
-    print(f"✅ File found: {TILE_INDEX_CSV}")
-
-# Print first few lines for sanity check
-with open(TILE_INDEX_CSV, "r", encoding="utf-8") as f:
-    print("First 5 lines of the CSV:")
-    for i in range(5):
-        line = f.readline()
-        print(line.strip())
-    f.seek(0)
+# Geodetic calculator and CRS transformer
+geod = Geod(ellps="WGS84")
+transformer = Transformer.from_crs("EPSG:32630", "EPSG:4326", always_xy=True)
 
 # Connect to MonkDB
 conn = client.connect(
@@ -46,23 +35,27 @@ conn = client.connect(
 cursor = conn.cursor()
 print("Connected to MonkDB.")
 
-# Drop and recreate table (only 4 columns)
+# Drop and recreate table
 cursor.execute(f"DROP TABLE IF EXISTS {DB_SCHEMA}.{RASTER_TABLE}")
 print(f"Dropped table {DB_SCHEMA}.{RASTER_TABLE} (if existed).")
 
 cursor.execute(f"""
 CREATE TABLE IF NOT EXISTS {DB_SCHEMA}.{RASTER_TABLE} (
     tile_id TEXT,
-    bbox GEO_SHAPE,
+    area GEO_SHAPE,
     path TEXT,
-    layer TEXT
+    layer TEXT,
+    resolution TEXT,
+    centroid GEO_POINT,
+    area_km DOUBLE,
+    geohash3 TEXT GENERATED ALWAYS AS substr(geohash(centroid), 1, 3)
 )
-CLUSTERED BY (layer) INTO 4 SHARDS
+CLUSTERED BY (layer) INTO 12 SHARDS
 WITH (number_of_replicas = 0);
 """)
-print(f"Created table {DB_SCHEMA}.{RASTER_TABLE} with 4 columns.")
+print(f"Created table {DB_SCHEMA}.{RASTER_TABLE} clustered by layer.")
 
-# Ingest
+# Ingest CSV
 inserted_count = 0
 skipped_count = 0
 batch = []
@@ -70,57 +63,72 @@ BATCH_SIZE = 500
 
 with open(TILE_INDEX_CSV, "r", encoding="utf-8") as f:
     reader = csv.reader(f)
-    header = next(reader)  # ['tile_id', 'bbox', 'path', 'layer']
+    header = next(reader)
 
     for row in reader:
-        if len(row) != 4:
-            print(f"Skipping row with wrong column count: {row}")
+        if len(row) != 7:
             skipped_count += 1
             continue
 
-        tile_id, polygon_wkt, file_path, layer = row
+        tile_id, utm_tile, timestamp, layer, resolution, bbox, path = row
 
         try:
-            geom = wkt.loads(polygon_wkt)
-            if not geom.is_valid:
-                print(f"Invalid geometry for {tile_id}: {polygon_wkt}")
+            geom_utm = wkt.loads(bbox)
+            if not geom_utm.is_valid:
                 skipped_count += 1
                 continue
 
-            geojson = mapping(geom)  # Convert to GeoJSON dict
+            # Transform to WGS84
+            geom_wgs84 = shapely_transform(transformer.transform, geom_utm)
+            if not geom_wgs84.is_valid:
+                skipped_count += 1
+                continue
 
-            batch.append((tile_id, geojson, file_path, layer))
+            # Compute centroid and area
+            centroid_coords = list(geom_wgs84.centroid.coords)[0]
+            centroid = [round(centroid_coords[0], 6),
+                        round(centroid_coords[1], 6)]
+            area_m2, _ = geod.geometry_area_perimeter(geom_wgs84)
+            area_km = round(abs(area_m2) / 1e6, 3)
+
+            batch.append((
+                tile_id,
+                geom_wgs84.wkt,
+                path,
+                layer,
+                resolution,
+                centroid,
+                area_km
+            ))
 
             if len(batch) >= BATCH_SIZE:
                 cursor.executemany(
                     f"""INSERT INTO {DB_SCHEMA}.{RASTER_TABLE}
-                    (tile_id, bbox, path, layer)
-                    VALUES (?, ?, ?, ?)""",
+                        (tile_id, area, path, layer, resolution, centroid, area_km)
+                        VALUES (?, ?, ?, ?, ?, ?, ?)""",
                     batch
                 )
                 inserted_count += len(batch)
                 batch.clear()
 
         except Exception as e:
-            print(f"❌ Error on {tile_id}: {e}")
+            print(f"❌ Error on tile {tile_id}: {e}")
             skipped_count += 1
 
-# Final insert
+# Final flush
 if batch:
     cursor.executemany(
         f"""INSERT INTO {DB_SCHEMA}.{RASTER_TABLE}
-        (tile_id, bbox, path, layer)
-        VALUES (?, ?, ?, ?)""",
+            (tile_id, area, path, layer, resolution, centroid, area_km)
+            VALUES (?, ?, ?, ?, ?, ?, ?)""",
         batch
     )
     inserted_count += len(batch)
 
-# Refresh for visibility
-# cursor.execute(f"REFRESH TABLE {DB_SCHEMA}.{RASTER_TABLE}")
+# Summary
 cursor.execute(f"SELECT COUNT(*) FROM {DB_SCHEMA}.{RASTER_TABLE}")
 total_rows = cursor.fetchone()[0]
 
-# Summary
 print("\n📊 Summary:")
 print(f"✅ Total rows in table: {total_rows}")
 print(f"✅ Successful inserts: {inserted_count}")
