@@ -35,9 +35,11 @@ We constructed a large-scale synthetic geospatial tile index using real metadata
 
 This seed tile was accompanied by associated raster `*.tif` paths and footprint polygons.
 
-## 🛰️ Sentinel-2 Level-2A (L2A) Product: Number of Layers
+---
 
-### 1. 🌈 Spectral Bands
+### 🛰️ Sentinel-2 Level-2A (L2A) Product: Number of Layers
+
+#### 1. 🌈 Spectral Bands
 
 Sentinel-2 L2A products nominally contain **13 spectral bands**:
 - **10m resolution:** B02 (Blue), B03 (Green), B04 (Red), B08 (NIR)
@@ -46,7 +48,7 @@ Sentinel-2 L2A products nominally contain **13 spectral bands**:
 
 > **Note:** For most official ESA L2A products, **B10 (Cirrus) is not included** in the output because it does not contain surface information or is not atmospherically corrected. The folder structure may reference B10, but the actual image is typically absent.[1][2][6]
 
-### 2. 🧭 Auxiliary Layers
+#### 2. 🧭 Auxiliary Layers
 
 Sen2Cor (the processor for L2A) generates several additional raster layers per tile:
 - **AOT** (Aerosol Optical Thickness)
@@ -61,7 +63,7 @@ Sen2Cor (the processor for L2A) generates several additional raster layers per t
 
 > ℹ️ Angle layers are typically stored in the QI_DATA/ subdirectory and may be tile-wide or pixel-wise, depending on the processing configuration. While not always required for general ingestion, they are critical for precise reflectance modeling or BRDF correction.
 
-### 3. 📊 Typical Layer Count
+#### 3. 📊 Typical Layer Count
 
 - **Spectral bands:** 12 (B01–B09, B11, B12; B10 usually excluded)
 - **Auxiliary layers:** 7 or more, depending on processor version and configuration
@@ -73,7 +75,7 @@ So, a typical L2A tile directory contains:
 **Total:** Usually **19–21 raster layers per tile**
 
 
-### Summary Table
+#### Summary Table
 
 | Layer Type        | Example Names                                         | Count      |
 |-------------------|------------------------------------------------------|------------|
