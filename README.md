@@ -326,8 +326,9 @@ Below is a short demonstration of the workflow:
 - Introduced **geohash3 regions** to enable proximity and clustering analysis in downstream geospatial queries
 - All ingestion steps included **validation and fault tolerance** — only 5–10 entries had invalid or null geometries and were gracefully skipped
 - End-to-end queries such as percentile distribution, bounding box unions, region diversity, and intersection tests were executed on **MonkDB with sub-second response times**
-- Results show MonkDB’s **spatial indexing, layer-wise analytics, and vector-tile handling are production-ready**, even under synthetic scale and multiplexed conditions
+- Results show MonkDB’s **spatial indexing, layer-wise analytics, and vector-tile handling are production-ready**, even under synthetic scale and multiplexed conditions.
 
+> Why MonkDB is relevant for these kind of advanced use cases vis-a-vis PostgreSQL + PostGIS has been explained in [this](./MonkDB_Benefits.md) document.
 > The updated results are stored in `results/v3` directory.
 
 ---
