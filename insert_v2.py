@@ -95,7 +95,7 @@ if not real_tiles:
     exit()
 
 # --- Generate and Insert Records ---
-TOTAL_MIN_ROWS = 10_000
+TOTAL_MIN_ROWS = 100_000
 batch = []
 inserted_count = 0
 skipped_count = 0
