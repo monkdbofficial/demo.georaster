@@ -35,6 +35,52 @@ We constructed a large-scale synthetic geospatial tile index using real metadata
 
 This seed tile was accompanied by associated raster `*.tif` paths and footprint polygons.
 
+## 🛰️ Sentinel-2 Level-2A (L2A) Product: Number of Layers
+
+### 1. 🌈 Spectral Bands
+
+Sentinel-2 L2A products nominally contain **13 spectral bands**:
+- **10m resolution:** B02 (Blue), B03 (Green), B04 (Red), B08 (NIR)
+- **20m resolution:** B05, B06, B07, B8A, B11, B12
+- **60m resolution:** B01, B09, B10
+
+> **Note:** For most official ESA L2A products, **B10 (Cirrus) is not included** in the output because it does not contain surface information or is not atmospherically corrected. The folder structure may reference B10, but the actual image is typically absent.[1][2][6]
+
+### 2. 🧭 Auxiliary Layers
+
+Sen2Cor (the processor for L2A) generates several additional raster layers per tile:
+- **AOT** (Aerosol Optical Thickness)
+- **WVP** (Water Vapour)
+- **SCL** (Scene Classification Layer)
+- **SNW** (Snow Probability)
+- **CLD** (Cloud Probability)
+- **CLP** (Cloud Probability from s2cloudless, if enabled)
+- **CLM** (Cloud Mask)
+- **dataMask**
+- **Sun and View Angles** (per-pixel or per-tile, sometimes as separate files)
+
+> ℹ️ Angle layers are typically stored in the QI_DATA/ subdirectory and may be tile-wide or pixel-wise, depending on the processing configuration. While not always required for general ingestion, they are critical for precise reflectance modeling or BRDF correction.
+
+### 3. 📊 Typical Layer Count
+
+- **Spectral bands:** 12 (B01–B09, B11, B12; B10 usually excluded)
+- **Auxiliary layers:** 7 or more, depending on processor version and configuration
+
+So, a typical L2A tile directory contains:
+- **12 spectral band images** (B01–B12, usually excluding B10)
+- **7+ auxiliary raster layers**
+
+**Total:** Usually **19–21 raster layers per tile**
+
+
+### Summary Table
+
+| Layer Type        | Example Names                                         | Count      |
+|-------------------|------------------------------------------------------|------------|
+| Spectral Bands    | B01–B12 (B10 usually excluded in L2A)                | 12         |
+| Auxiliary Layers  | AOT, WVP, SCL, SNW, CLD, CLP, CLM, dataMask, angles | 7+         |
+| **Total**         |                                                      | **19–21+** |
+
 ---
 
 ### 🔁 Synthetic Amplification
