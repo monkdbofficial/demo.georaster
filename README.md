@@ -1,19 +1,64 @@
 # 🌍 Raster Tile Geospatial Indexing Demo with MonkDB
 
 > **Author:** MonkDB Engineering  
-> **Last Updated:** 2025-06-09
+> **Last Updated:** 2025-06-13
 
 ---
 
 ## 📦 Dataset Overview
 
-We have used Natural Earth's Cross Blended Hypsometric Tints with Relief, Water, Drainages, and Ocean Bottom dataset (specifically, the [**HYP_HR_SR_OB_DR.zip**](https://www.naturalearthdata.com/http//www.naturalearthdata.com/download/10m/raster/HYP_HR_SR_OB_DR.zip) archive). This high-resolution global raster (.tif) file provides visually rich, elevation-based shading with additional features such as ocean floor bathymetry, river drainages, and land relief. Sourced from Natural Earth Data, this dataset is suitable for large-scale geospatial visualizations, terrain analysis, and vector-based enrichment, making it ideal for geospatial indexing and geoanalytics with MonkDB.
+We constructed a large-scale synthetic geospatial tile index using real metadata extracted from the **Sentinel-2 MSI L2A** product specifically from a representative granule with tile ID **30UVA** and orbit details like:
+
+| Field                      | Value                                                                                                 |
+|----------------------------|-------------------------------------------------------------------------------------------------------|
+| Absolute orbit number      | 4011                                                                                                  |
+| Beginning date time        | 2025-06-12T11:21:31.025000Z                                                                           |
+| Cloud cover                | 97.414082                                                                                             |
+| Datastrip id               | S2C_OPER_MSI_L2A_DS_2CPS_20250612T150504_S20250612T112401_N05.11                                      |
+| Ending date time           | 2025-06-12T11:21:31.025000Z                                                                           |
+| Granule identifier         | S2C_OPER_MSI_L2A_TL_2CPS_20250612T150504_A004011_T30UVA_N05.11                                        |
+| Modification date          | 2025-06-12T16:09:26.704058Z                                                                           |
+| Operational mode           | INS-NOBS                                                                                              |
+| Origin                     | ESA                                                                                                   |
+| Origin date                | 2025-06-12T15:57:26.000000Z                                                                           |
+| Processing date            | 2025-06-12T15:05:04.000000Z                                                                           |
+| Processing level           | S2MSI2A                                                                                               |
+| Processor version          | 05.11                                                                                                 |
+| Product group id           | GS2C_20250612T112131_004011_N05.11                                                                    |
+| Product type               | S2MSI2A                                                                                               |
+| Publication date           | 2025-06-12T16:09:26.704058Z                                                                           |
+| Relative orbit number      | 37                                                                                                    |
+| S3Path                     | /eodata/Sentinel-2/MSI/L2A/2025/06/12/S2C_MSIL2A_20250612T112131_N0511_R037_T30UVA_20250612T150504.SAFE|
+| Source product             | S2C_OPER_MSI_L2A_TL_2CPS_20250612T150504_A004011_T30UVA_N05.11, S2C_OPER_MSI_L2A_DS_2CPS_20250612T150504_S20250612T112401_N05.11 |
+| Source product origin date | 2025-06-12T15:57:26Z, 2025-06-12T15:55:59Z                                                            |
+| Tile id                    | 30UVA                                                                                                 |
+
+This seed tile was accompanied by associated raster .tif paths and footprint polygons.
+
+---
+
+### 🔁 Synthetic Amplification
+
+Since the original dataset contained only *36 tile footprints*, we amplified it to `100,000` entries for scalability and stress testing purposes. The process involved:
+
+- Spatial translations and perturbations of original WKT polygons.
+- Systematic duplication across varying `layer`, `resolution`, and `path` values.
+- Generation of realistic metadata fields such as `centroid`, `area_km`, and derived `geohash3`
+
+Each row in the resulting dataset simulates a unique raster tile footprint suitable for spatial querying, aggregation, and indexing.
 
 ### 🔹 Why This Dataset?
 
-- **High-resolution geospatial coverage** of the Earth’s surface
-- Well-suited for raster tile indexing and tiling workflows
-- Ideal for testing geospatial database capabilities such as `GEO_SHAPE`, `GEO_POINT`, and spatial functions like `intersects`, `distance`, `area`
+- Real-world provenance (based on actual Sentinel-2 tile metadata)
+- Highly scalable: 100K records mimic high-throughput satellite ingestion pipelines
+- Rich geospatial structure:
+  - `area`: WKT `GEO_SHAPE` (polygon)
+  - `centroid`: derived `GEO_POINT`
+  - `geohash3`: spatial region hashing for clustering and diversity checks
+- Used for:
+  - intersects, within, distance, and area benchmarks
+  - Advanced queries like percentile distributions, bounding box coverage, resolution-layer analysis, and geohash diversity
+  - Evaluating MonkDB's performance for Earth observation-style workloads
 
 ---
 
@@ -28,7 +73,7 @@ We have used Natural Earth's Cross Blended Hypsometric Tints with Relief, Water,
 | `PyProj`    | Accurate area calculation on curved surfaces |
 | `MonkDB`    | AI-Native database for geospatial storage    |
 | `Dask`      | Parallel processing of large sets |
-| `Python`    | Scripting, data transformation, ETL          |
+| `Python3`    | Scripting, data transformation, ETL          |
 
 ---
 
@@ -38,29 +83,62 @@ You need to create a config ini file at the root with the below structure. Repla
 
 ```text
 [paths]
-tile_dir = /home/ubuntu/geo/tiled_raster
-output_csv = raster_tile_index.csv
+output_csv_v3 = sentinel_v3_tile_index.csv   # this is the file name (where the indexed tiles would be written to)
+
+[sentinel]
+sentinel_data_dir_v2 = /home/ubuntu/v3_geo   # this is where the derived *.tiff are stored.
 
 [metadata]
-layer_name = hypso_relief
 export_format = csv
 
 [database]
-DB_HOST = xx.xx.xx.xxx
+DB_HOST = xx.xx.xxx.xxx
 DB_PORT = 4200
 DB_USER = testuser
 DB_PASSWORD = testpassword
 DB_SCHEMA = monkdb
-RASTERGEO_POINTS_TABLE = raster_geo_points
-RASTER_GEO_SHAPE_TABLE = raster_geo_shapes
+RASTER_GEO_SHAPE_TABLE_V2 = sentinel
 ```
 
 ## 🗂️ GDAL Usage
 
+The data from [Sentinel Hub](https://browser.dataspace.copernicus.eu) is open-source and typically provided as a `.SAFE.zip` archive.
+
+Once extracted, the archive contains a structured directory hierarchy. To locate the imagery files, navigate to:
+
+```txt
+GRANULE/L<...>{TILE_ID}{TIMESTAMP}/IMG_DATA
+```
+
+Inside the `IMG_DATA` folder, you will find multiple `.jp2` (JPEG2000) files representing different spectral bands and resolutions.
+
+### Convert `.jp2` to `.tif`
+
+To convert `.jp2` files to `.tif` format, use the provided [`to_tiff.sh`](./to_tiff.sh) script:
+
+#### Step 1: Make the script executable
+
+```bash
+chmod +x to_tiff.sh
+```
+
+#### Step 2: Run the conversion script
+
+```bash
+./to_tiff.sh <SOURCE_IMG_DATA_FOLDER> <DESTINATION_FOLDER_FOR_TIFFS>
+```
+
+This will recursively process all `.jp2` files in the source folder and save the converted `.tif` files in the specified destination directory.
+
+### Validating TIF files
+
+`tif` files need to be validated to ensure the presence of spatial reference system (CRS). To validate run the below command. 
+
 We used:
 ```bash
-gdalinfo -json /path/to/HYP_HR_SR_OB_DR.tif
+gdalinfo -json /path/to/file_name.tif
 ```
+
 to extract:
 - Bounding box
 - Coordinate reference system (CRS)
@@ -72,20 +150,7 @@ This metadata is used to compute:
 - **Centroid** of the tile (`GEO_POINT`)
 - **Area** using `pyproj.Geod` for Earth-accurate results
 
-We then split the tif file into manageable tiles, e.g., 512x512 using gdal's retile utility.
-
-```bash
-gdal_retile.py \
-  -ps 512 512 \
-  -targetDir ./tiled_raster/ \
-  -co TILED=YES -co COMPRESS=DEFLATE \
-  HYP_HR_SR_OB_DR.tif
-```
-
-Each tile was then:
-- Georeferenced (GeoTIFF)
-- Usable independently
-- Mapped cleanly to a bounding box (for ROI querying)
+> **MonkDB requires all `GEO_SHAPE` column entries to be spatially referenced.** 
 
 ---
 
@@ -204,13 +269,15 @@ Below is a short demonstration of the workflow:
 
 ## ✅ Results and Observations
 
-- Successfully indexed and inserted 940+ raster tiles across 4 simulated layers
-- Enabled multi-layer multiplexing with each `tile_id` replicated across layers (e.g., `tile_id__hypso_relief`, `tile_id__land_cover_simulated`, etc.)
-- Introduced resolution tiers (`high`, `medium`, `low`, `very_low`) to simulate realistic downsampling and test hybrid query adaptability
-- Geodesic area calculations are accurate using `WGS84 ellipsoid`; earlier WKT-based miscalculations were fully resolved
-- Top tiles show uniform size due to identical bounding box logic across layers which is consistent with tile-based raster design
-- Only ~5–10 records encountered `NULLs` or invalid geometry, all of which were safely skipped during ingestion
-- Queries now reflect layer-specific insights, cross-layer comparisons, and are optimized for sub-second performance even with multiplexed data
+- Migrated to **Sentinel-2 Level-2A imagery**, using metadata-rich `.SAFE` archives from [Copernicus Open Access Hub](https://browser.dataspace.copernicus.eu)
+- Generated **100,000+ synthetic raster tile entries** from an original sample of 36 real Sentinel tiles, ensuring varied spatial coverage and realistic duplication for benchmarking
+- Resolution values (e.g., `10m`, `20m`, `60m`) were **extracted directly from the dataset structure**, ensuring fidelity to Sentinel band characteristics
+- **Bounding boxes and centroids** were computed accurately using `WGS84` ellipsoid geometry for each tile polygon, and all values were normalized to `GEO_SHAPE` and `GEO_POINT`
+- Calculated `area_km` per tile with high precision; **uniformity across layers** reflects consistent tiling and reprojection logic
+- Introduced **geohash3 regions** to enable proximity and clustering analysis in downstream geospatial queries
+- All ingestion steps included **validation and fault tolerance** — only 5–10 entries had invalid or null geometries and were gracefully skipped
+- End-to-end queries such as percentile distribution, bounding box unions, region diversity, and intersection tests were executed on **MonkDB with sub-second response times**
+- Results show MonkDB’s **spatial indexing, layer-wise analytics, and vector-tile handling are production-ready**, even under synthetic scale and multiplexed conditions
 
 ---
 
@@ -227,7 +294,6 @@ Below is a short demonstration of the workflow:
 ## 📌 Next Steps
 
 - Enable streaming tile insertions via MonkDB’s ingestion APIs
-- Layer additional metadata: vegetation, land use, satellite data
 - Explore real-time raster transformations and AI model overlays
 
 ---
