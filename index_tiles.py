@@ -10,40 +10,48 @@ import pandas as pd
 config = configparser.ConfigParser()
 config.read("config.ini")
 
-tile_dir = config["paths"]["tile_dir"].rstrip("/")
-output_filename = config["paths"]["output_csv"]
-layer_name = config["metadata"]["layer_name"]
+sentinel_data_dir = config["sentinel"]["sentinel_data_dir"].rstrip("/")
+output_filename = config["paths"]["output_csv_v2"]
 export_format = config["metadata"].get("export_format", "csv").lower()
 
-# Set output path: tile_dir/tile_index/output_filename
-output_dir = os.path.join(tile_dir, "tile_index")
+# Set output path
+output_dir = os.path.join(sentinel_data_dir, "tile_index")
 os.makedirs(output_dir, exist_ok=True)
 output_file_path = os.path.join(output_dir, output_filename)
 
 
 @delayed
-def extract_tile_metadata(fname):
+def extract_tile_metadata(root, fname):
     if not fname.endswith(".tif"):
         return None
 
-    path = os.path.join(tile_dir, fname)
-    with rasterio.open(path) as src:
-        bounds = src.bounds
-        tile_id = os.path.splitext(fname)[0]
-        polygon_wkt = box(bounds.left, bounds.bottom,
-                          bounds.right, bounds.top).wkt
-        return {
-            "tile_id": tile_id,
-            "bbox": polygon_wkt,
-            "path": os.path.abspath(path),
-            "layer": layer_name
-        }
+    full_path = os.path.join(root, fname)
+    try:
+        with rasterio.open(full_path) as src:
+            bounds = src.bounds
+            tile_id = os.path.splitext(fname)[0]
+            polygon_wkt = box(bounds.left, bounds.bottom,
+                              bounds.right, bounds.top).wkt
+            layer_name = os.path.basename(root)  # NDVI / RGB / SAR
+            return {
+                "tile_id": tile_id,
+                "bbox": polygon_wkt,
+                "path": os.path.abspath(full_path),
+                "layer": layer_name
+            }
+    except Exception as e:
+        print(f"Error reading {full_path}: {e}")
+        return None
 
 
 def main():
-    print(f"Indexing raster tiles from: {tile_dir}")
+    print(f"Indexing raster tiles from: {sentinel_data_dir}")
+    tasks = []
 
-    tasks = [extract_tile_metadata(f) for f in os.listdir(tile_dir)]
+    for root, dirs, files in os.walk(sentinel_data_dir):
+        for fname in files:
+            tasks.append(extract_tile_metadata(root, fname))
+
     results = compute(*tasks)
     records = [r for r in results if r is not None]
 
