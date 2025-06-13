@@ -22,6 +22,22 @@ output_dir = os.path.join(sentinel_data_dir, "tile_index")
 os.makedirs(output_dir, exist_ok=True)
 TILE_INDEX_CSV = os.path.join(output_dir, output_filename)
 
+# ---- FILE CHECKS ----
+print(f"Checking CSV file: {TILE_INDEX_CSV}")
+if not os.path.exists(TILE_INDEX_CSV):
+    print(f"❌ File not found: {TILE_INDEX_CSV}")
+    exit(1)
+else:
+    print(f"✅ File found: {TILE_INDEX_CSV}")
+
+# Print first few lines for sanity check
+with open(TILE_INDEX_CSV, "r", encoding="utf-8") as f:
+    print("First 5 lines of the CSV:")
+    for i in range(5):
+        line = f.readline()
+        print(line.strip())
+    f.seek(0)
+
 # Connect to MonkDB
 conn = client.connect(
     f"http://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}",
