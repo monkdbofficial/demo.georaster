@@ -35,16 +35,16 @@ DB_PORT = config['database']['DB_PORT']
 DB_USER = config['database']['DB_USER']
 DB_PASSWORD = config['database']['DB_PASSWORD']
 DB_SCHEMA = config['database']['DB_SCHEMA']
-RASTER_TABLE = config['database']['RASTER_GEO_SHAPE_TABLE']
+RASTER_TABLE = config['database']['RASTER_GEO_SHAPE_TABLE_V2']
 
 # Path resolution (same as insert script)
-tile_dir = config['paths']['tile_dir']
-output_filename = config['paths']['output_csv']
+tile_dir = config['sentinel']['sentinel_data_dir_v2']
+output_filename = config['paths']['output_csv_v3']
 tile_index_dir = os.path.join(tile_dir, "tile_index")
 TILE_INDEX_CSV = os.path.join(tile_index_dir, output_filename)
 
 # Output folder: use 'results' directory in current working directory
-output_dir = os.path.join(os.getcwd(), "results")
+output_dir = os.path.join(os.getcwd(), "results", "v3")
 os.makedirs(output_dir, exist_ok=True)
 
 # Connect to MonkDB
