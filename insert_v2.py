@@ -58,6 +58,7 @@ with open(TILE_INDEX_CSV, "r", encoding="utf-8") as f:
 
     for row in reader:
         if len(row) != 4:
+            print(f"Skipping row with wrong column count: {row}")
             skipped_count += 1
             continue
 
@@ -66,6 +67,7 @@ with open(TILE_INDEX_CSV, "r", encoding="utf-8") as f:
         try:
             geom = wkt.loads(polygon_wkt)
             if not geom.is_valid:
+                print(f"Invalid geometry for {tile_id}: {polygon_wkt}")
                 skipped_count += 1
                 continue
 
