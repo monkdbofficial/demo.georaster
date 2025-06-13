@@ -183,6 +183,7 @@ if batch:
     )
     inserted_count += len(batch)
 
+cursor.execute(f"REFRESH TABLE {DB_SCHEMA}.{RASTER_TABLE}")
 cursor.execute(f"SELECT COUNT(*) FROM {DB_SCHEMA}.{RASTER_TABLE}")
 total_rows = cursor.fetchone()[0]
 
