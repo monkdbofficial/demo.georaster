@@ -2,40 +2,40 @@
 
 ### Tiles with multiple layer versions (duplicate tile_id)
 ⚠️ No results returned.
-⏱️ Duration: 0.047 sec
+⏱️ Duration: 0.245 sec
 
 
 ### Tiles per layer distribution
 ✅ Query succeeded. Rows: 36
-⏱️ Duration: 0.032 sec
-📁 Saved to: /home/ubuntu/demo.georaster/results/v3/tiles_per_layer_distribution.csv
+⏱️ Duration: 0.238 sec
+📁 Saved to: /Users/krishnakantc/Documents/sandbox/demos/raster/results/v3/tiles_per_layer_distribution.csv
 
 
 ### Average area_km per layer
 ✅ Query succeeded. Rows: 36
-⏱️ Duration: 0.047 sec
-📁 Saved to: /home/ubuntu/demo.georaster/results/v3/average_area_km_per_layer.csv
+⏱️ Duration: 0.238 sec
+📁 Saved to: /Users/krishnakantc/Documents/sandbox/demos/raster/results/v3/average_area_km_per_layer.csv
 
 
 ### Top 5 tiles by area in each layer
 ✅ Query succeeded. Rows: 180
-⏱️ Duration: 0.254 sec
-📁 Saved to: /home/ubuntu/demo.georaster/results/v3/top_5_tiles_by_area_in_each_layer.csv
+⏱️ Duration: 0.358 sec
+📁 Saved to: /Users/krishnakantc/Documents/sandbox/demos/raster/results/v3/top_5_tiles_by_area_in_each_layer.csv
 
 
 ### Resolution-wise tile count per layer
 ✅ Query succeeded. Rows: 36
-⏱️ Duration: 0.012 sec
-📁 Saved to: /home/ubuntu/demo.georaster/results/v3/resolution_wise_tile_count_per_layer.csv
+⏱️ Duration: 0.24 sec
+📁 Saved to: /Users/krishnakantc/Documents/sandbox/demos/raster/results/v3/resolution_wise_tile_count_per_layer.csv
 
 
 ### Geohash region diversity per layer (precision ~3)
 ✅ Query succeeded. Rows: 36
-⏱️ Duration: 0.012 sec
-📁 Saved to: /home/ubuntu/demo.georaster/results/v3/geohash_region_diversity_per_layer_precision_3.csv
+⏱️ Duration: 0.239 sec
+📁 Saved to: /Users/krishnakantc/Documents/sandbox/demos/raster/results/v3/geohash_region_diversity_per_layer_precision_3.csv
 
 
 ### Tiles near [85, 20] with area > 1000 km2
 ✅ Query succeeded. Rows: 10
-⏱️ Duration: 0.184 sec
-📁 Saved to: /home/ubuntu/demo.georaster/results/v3/tiles_near_85_20_with_area_1000_km2.csv
+⏱️ Duration: 0.252 sec
+📁 Saved to: /Users/krishnakantc/Documents/sandbox/demos/raster/results/v3/tiles_near_85_20_with_area_1000_km2.csv

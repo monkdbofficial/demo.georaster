@@ -2,7 +2,10 @@ import os
 import torch
 import pandas as pd
 from transformers import pipeline
+from dotenv import load_dotenv
 from mcp_monkdb.mcp_server import run_select_query
+
+load_dotenv()
 
 # === Load TinyLlama ===
 pipe = pipeline(
